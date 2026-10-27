@@ -8,6 +8,7 @@
   <title>Mahjong Jakarta Club — 144 Ubin Hong Kong Style</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23102f2b'/%3E%3Crect x='16' y='11' width='32' height='42' rx='5' fill='%23f3e7cc'/%3E%3Ctext x='32' y='42' font-family='serif' font-size='26' fill='%23b44b3a' text-anchor='middle'%3E中%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./riichi.css" />
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="./riichi.js" defer></script>
 </head>
 <body>
@@ -16,7 +17,11 @@
     <header class="topbar">
       <a href="#table" class="brand" aria-label="Ke meja Mahjong"><span class="brand-icon">中</span><span class="brand-word"><strong>MAHJONG</strong><small>JAKARTA CLUB</small></span></a>
       <div class="top-caption"><span>✧</span> JAKARTA LOUNGE TABLE · 144 UBIN <span>✧</span></div>
-      <div class="top-actions"><span class="live-pill"><span class="live-dot"></span> MODE SOLO • 3 BOT</span><button id="rulesTop" class="outline-small">? <span>Cara Main</span></button></div>
+      <div class="top-actions">
+        <span class="live-pill" id="serverPill"><span class="live-dot connecting" id="serverDot"></span> <span id="serverStatusText">MENGHUBUNGKAN...</span></span>
+        <button id="onlineBtn" class="outline-small">🌐 <span>Multiplayer</span></button>
+        <button id="rulesTop" class="outline-small">? <span>Cara Main</span></button>
+      </div>
     </header>
 
     <div class="title-area"><div class="eyebrow">TREN VIRAL JAKARTA · 144 UBIN HONG KONG STYLE</div><h1>Sensasi <em>Mahjong</em> Meja Otomatis.</h1><p>Aturan santai kafe Jakarta: 4 kelompok + 1 pasang, 8 ubin bunga & musim, serta sistem nilai Fan.</p></div>
@@ -24,6 +29,20 @@
     <main class="layout" id="table">
       <section class="game-side" aria-label="Meja permainan Mahjong empat pemain">
         <div class="table-toolbar"><div><span class="tiny-upper">RONDE SAAT INI</span><h2>Angin Timur <span class="small-roman">I</span></h2></div><div class="table-toolbar-right"><span id="turnCounter">GILIRAN 1</span><button id="newGame" class="text-button">↻ <span>Game Baru</span></button></div></div>
+
+        <div id="onlineBar" class="online-bar" hidden>
+          <div class="online-info">
+            <span>KODE MEJA: <strong id="onlineRoomCode">----</strong></span>
+            <span>•</span>
+            <span>KURSI: <strong id="onlineSeatName">Timur</strong></span>
+          </div>
+          <div class="online-controls">
+            <button id="copyRoomBtn" class="outline-small">📋 Salin Kode</button>
+            <button id="fillBotsBtn" class="outline-small">🤖 Isi Bot</button>
+            <button id="startOnlineGameBtn" class="primary-action small-btn">▶ Mulai Game</button>
+            <button id="leaveRoomBtn" class="outline-small">✕ Keluar Meja</button>
+          </div>
+        </div>
 
         <div class="mahjong-table" id="mahjongTable">
           <div class="corner tl">✦</div><div class="corner tr">✦</div><div class="corner bl">✦</div><div class="corner br">✦</div>

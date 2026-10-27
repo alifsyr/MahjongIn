@@ -24,6 +24,10 @@
     generation: 0, log: [], winner: null
   };
 
+  const SERVER_URL = 'https://mahjongin-server.onrender.com';
+  let socket = null;
+  let onlineSession = null;
+
   const tileName = (t) => {
     if (t < 9) return `${t + 1} Karakter`;
     if (t < 18) return `${t - 8} Lingkaran`;
@@ -343,6 +347,11 @@
   }
 
   function playerDraw() {
+    if (onlineSession) {
+      if (state.current !== 0 || state.phase !== 'draw') return;
+      socket?.emit('game:draw');
+      return;
+    }
     if (!state.active || state.phase !== 'draw' || state.current !== 0) return;
     if (drawFromWall(0) === null) return;
     state.phase = 'discard';
@@ -406,6 +415,12 @@
     const displayed = displayedHand();
     const tile = displayed[state.selected];
     if (tile === undefined) return;
+    if (onlineSession) {
+      socket?.emit('game:discard', { tile });
+      state.selected = null;
+      render();
+      return;
+    }
     discardTile(0, tile);
   }
 
@@ -493,11 +508,23 @@
     const { discarder, tile, options } = state.pending;
     const option = options[index];
     if (!option) return;
+    if (onlineSession) {
+      socket?.emit('game:claim', { kind: option.kind, index });
+      state.pending = null;
+      render();
+      return;
+    }
     claimDiscard(0, discarder, tile, option);
   }
 
   function passClaim() {
     if (state.phase !== 'claim' || !state.pending) return;
+    if (onlineSession) {
+      socket?.emit('game:pass');
+      state.pending = null;
+      render();
+      return;
+    }
     const { discarder, tile } = state.pending;
     state.pending = null;
     state.phase = 'resolving';
@@ -857,11 +884,249 @@
     });
   }
 
+  function renderOnlineBar() {
+    const bar = $('onlineBar');
+    if (!bar) return;
+    if (!onlineSession) {
+      bar.hidden = true;
+      return;
+    }
+    bar.hidden = false;
+    $('onlineRoomCode').textContent = onlineSession.roomCode;
+    $('onlineSeatName').textContent = WINDS[onlineSession.seat];
+    $('fillBotsBtn').hidden = state.phase !== 'waiting';
+    $('startOnlineGameBtn').hidden = state.phase !== 'waiting' || onlineSession.seat !== 0;
+  }
+
+  function applyServerGameState(s) {
+    if (!onlineSession) return;
+    state.active = s.phase !== 'waiting' && s.phase !== 'over';
+    state.phase = s.phase === 'waiting' ? 'waiting' : s.phase;
+    state.current = s.currentTurn === s.seat ? 0 : ((s.currentTurn - s.seat + 4) % 4);
+    state.turn = s.turn;
+    state.wall = Array(s.wallCount).fill(0);
+    state.lastDiscard = s.lastDiscard ? {
+      seat: (s.lastDiscard.seat - s.seat + 4) % 4,
+      tile: s.lastDiscard.tile
+    } : null;
+    state.pending = s.pendingClaim;
+
+    state.players[0] = {
+      seat: 0,
+      name: NAMES[0],
+      hand: [...s.myHand],
+      flowers: [...s.myFlowers],
+      melds: [...s.myMelds],
+      discards: state.players[0]?.discards || [],
+      score: s.myScore
+    };
+
+    s.opponents.forEach((opp) => {
+      const relSeat = (opp.seat - s.seat + 4) % 4;
+      state.players[relSeat] = {
+        seat: relSeat,
+        name: opp.name,
+        hand: Array(opp.tileCount).fill(0),
+        flowers: [...opp.flowers],
+        melds: [...opp.melds],
+        discards: [...opp.discards],
+        score: opp.score
+      };
+    });
+
+    if (s.phase === 'waiting') {
+      setStatus(`Meja Online #${s.roomCode}. Tunggu pemain lain atau tekan Isi Bot & Mulai Game.`);
+    } else if (state.current === 0 && state.phase === 'draw') {
+      setStatus('Giliranmu! Tekan Ambil Ubin.');
+    } else if (state.current === 0 && state.phase === 'discard') {
+      setStatus(isWinningHand(state.players[0].hand, state.players[0].melds.length) ? 'Mahjong! Tanganmu sudah lengkap.' : 'Pilih satu ubin lalu tekan Buang Ubin.');
+    } else if (state.phase === 'claim' && s.pendingClaim) {
+      setStatus(`Kesempatan klaim ${tileName(s.pendingClaim.tile)}!`);
+    } else {
+      setStatus(`Menunggu giliran lawan...`);
+    }
+
+    render();
+    renderOnlineBar();
+  }
+
+  function handleServerGameOver(winnerSeat, fanSummary) {
+    state.active = false;
+    state.phase = 'over';
+    const relWinner = (winnerSeat - (onlineSession?.seat || 0) + 4) % 4;
+    const winnerName = relWinner === 0 ? 'Kamu' : (NAMES[relWinner] || `Pemain ${winnerSeat}`);
+    showModal({
+      icon: relWinner === 0 ? '✿' : WIND_SIGNS[winnerSeat],
+      kicker: 'RONDE ONLINE SELESAI',
+      title: relWinner === 0 ? 'Mahjong! Kamu menang!' : `${winnerName} menang!`,
+      body: `
+        <div class="winner-summary">
+          <p><strong>${winnerName}</strong> memenangkan ronde meja online!</p>
+          <div class="fan-box">
+            <div class="fan-header"><span>RINCIAN FAN</span><strong>TOTAL: ${fanSummary.totalFan} FAN</strong></div>
+            <div class="fan-items">${fanSummary.items.map((it) => `<div class="fan-row"><span>✦ ${it.name}</span><strong>+${it.fan} Fan</strong></div>`).join('')}</div>
+          </div>
+          <div class="winner-big">${fanSummary.basePoints.toLocaleString('id-ID')} <small style="font-size:14px;font-weight:normal;">poin dasar</small></div>
+          <p class="table-disclaimer">Hasil kalkulasi resmi server online MahjongIn.</p>
+        </div>
+      `,
+      actions: [
+        {
+          text: 'Mulai Ronde Berikutnya',
+          primary: true,
+          run: () => {
+            closeModal();
+            socket?.emit('game:start');
+          }
+        }
+      ]
+    });
+  }
+
+  function showOnlineLobby() {
+    const isConn = socket?.connected;
+    showModal({
+      icon: '🌐',
+      kicker: 'MULTIPLAYER ONLINE',
+      title: 'Meja Mahjong Online',
+      body: `
+        <div class="lobby-box">
+          <div class="server-status-box">
+            <span class="live-dot ${isConn ? 'connected' : 'connecting'}"></span>
+            <span><strong>Server:</strong> ${SERVER_URL} (${isConn ? 'Online' : 'Menghubungkan...'})</span>
+          </div>
+
+          <label style="font-size:11px;color:#ded1b2;"><strong>Nama Pemain:</strong></label>
+          <input id="playerNameInput" class="lobby-input" placeholder="Masukkan namamu" value="${localStorage.getItem('mahjong-player-name') || 'Kamu'}" />
+
+          <div style="margin-top:10px;">
+            <strong style="color:#eedcb9;font-size:12px;">1. Buat Meja Baru (Host)</strong>
+            <p style="font-size:11px;color:#a4bda8;margin:4px 0 8px;">Buat meja, dapatkan kode 4-karakter, dan bagikan ke teman.</p>
+            <button id="modalCreateRoomBtn" class="primary-action" style="width:100%;">✦ Buat Meja Baru</button>
+          </div>
+
+          <div class="lobby-divider"><span>ATAU GABUNG MEJA</span></div>
+
+          <div>
+            <strong style="color:#eedcb9;font-size:12px;">2. Gabung Meja Teman</strong>
+            <p style="font-size:11px;color:#a4bda8;margin:4px 0 8px;">Masukkan kode meja dari temanmu.</p>
+            <div class="join-row">
+              <input id="modalRoomCodeInput" class="lobby-input" placeholder="KODE (4 HURUF)" maxlength="4" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:bold;" />
+              <button id="modalJoinRoomBtn" class="secondary-action" style="white-space:nowrap;">Gabung ↗</button>
+            </div>
+          </div>
+        </div>
+      `,
+      actions: [
+        { text: 'Tutup', run: closeModal }
+      ]
+    });
+
+    setTimeout(() => {
+      $('modalCreateRoomBtn')?.addEventListener('click', () => {
+        const name = ($('playerNameInput')?.value || '').trim() || 'Kamu';
+        localStorage.setItem('mahjong-player-name', name);
+        if (!socket?.connected) {
+          alert('Belum terhubung ke server online. Tunggu sebentar (Render cold start)...');
+          return;
+        }
+        socket.emit('room:create', { name });
+      });
+
+      $('modalJoinRoomBtn')?.addEventListener('click', () => {
+        const name = ($('playerNameInput')?.value || '').trim() || 'Pemain';
+        const roomCode = ($('modalRoomCodeInput')?.value || '').trim().toUpperCase();
+        if (!roomCode || roomCode.length < 3) {
+          alert('Masukkan kode meja yang valid (4 karakter).');
+          return;
+        }
+        localStorage.setItem('mahjong-player-name', name);
+        if (!socket?.connected) {
+          alert('Belum terhubung ke server online. Tunggu sebentar (Render cold start)...');
+          return;
+        }
+        socket.emit('room:join', { roomCode, name });
+      });
+    }, 50);
+  }
+
+  function updateServerStatus(status, text) {
+    const dot = $('serverDot');
+    const label = $('serverStatusText');
+    if (!dot || !label) return;
+    dot.className = `live-dot ${status}`;
+    label.textContent = text;
+  }
+
+  function initSocket() {
+    if (typeof io === 'undefined') {
+      updateServerStatus('disconnected', 'OFFLINE (SOLO)');
+      return;
+    }
+    updateServerStatus('connecting', 'MENGHUBUNGKAN...');
+    try {
+      socket = io(SERVER_URL, {
+        transports: ['websocket', 'polling']
+      });
+
+      socket.on('connect', () => {
+        console.log('Berhasil terhubung ke server MahjongIn! Socket ID:', socket.id);
+        updateServerStatus('connected', 'ONLINE • SIAP');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Terputus dari server.');
+        updateServerStatus('disconnected', 'TERPUTUS (SOLO)');
+      });
+
+      socket.on('connect_error', () => {
+        updateServerStatus('disconnected', 'SERVER TIDUR (SOLO)');
+      });
+
+      socket.on('room:joined', ({ roomCode, seat }) => {
+        onlineSession = { roomCode, seat };
+        addLog(`Masuk meja online #${roomCode} sebagai kursi ${WINDS[seat]}.`);
+        closeModal();
+        renderOnlineBar();
+      });
+
+      socket.on('game:state', (serverState) => {
+        applyServerGameState(serverState);
+      });
+
+      socket.on('game:over', ({ winner, fanSummary }) => {
+        handleServerGameOver(winner, fanSummary);
+      });
+
+      socket.on('error', (msg) => {
+        alert(msg);
+      });
+    } catch (err) {
+      console.warn('Socket initialization failed:', err);
+      updateServerStatus('disconnected', 'OFFLINE');
+    }
+  }
+
   $('rulesTop').addEventListener('click', showRules);
   $('rulesSide').addEventListener('click', showRules);
   $('newGame').addEventListener('click', confirmNewGame);
   $('modalClose').addEventListener('click', closeModal);
   $('overlay').addEventListener('click', (event) => { if (event.target === $('overlay')) closeModal(); });
+  $('onlineBtn')?.addEventListener('click', showOnlineLobby);
+  $('copyRoomBtn')?.addEventListener('click', () => {
+    if (onlineSession) {
+      navigator.clipboard?.writeText(onlineSession.roomCode);
+      alert('Kode meja disalin: ' + onlineSession.roomCode);
+    }
+  });
+  $('fillBotsBtn')?.addEventListener('click', () => socket?.emit('room:fill-bots'));
+  $('startOnlineGameBtn')?.addEventListener('click', () => socket?.emit('game:start'));
+  $('leaveRoomBtn')?.addEventListener('click', () => {
+    onlineSession = null;
+    $('onlineBar').hidden = true;
+    startNewGame();
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeModal();
     if (!$('overlay').hidden || !state.active) return;
@@ -869,4 +1134,5 @@
     if (event.key === 'Enter' && state.phase === 'discard' && state.selected !== null) playerDiscard();
   });
   startNewGame();
+  initSocket();
 })();
