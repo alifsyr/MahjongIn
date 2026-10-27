@@ -1,5 +1,7 @@
-/* Mahjong Garden: simplified 4-player Japanese-style Mahjong.
-   No money, online connection, account, or external assets are involved. */
+/* Mahjong Jakarta Lounge: 4-player Hong Kong style Mahjong (144 tiles).
+   Implements 144 tiles including 8 flowers/seasons, automatic flower replacement,
+   and Hong Kong Fan scoring with table chip transfer (shooter vs tsumo).
+   Purely recreational board game with no real money or gambling involved. */
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -9,29 +11,56 @@
   const NUMBER_SIGNS = '一二三四五六七八九';
   const HONORS = ['東', '南', '西', '北', '中', '發', '白'];
   const HONOR_NAMES = ['Angin Timur', 'Angin Selatan', 'Angin Barat', 'Angin Utara', 'Naga Merah', 'Naga Hijau', 'Naga Putih'];
-  const state = { players: [], wall: [], current: 0, phase: 'draw', selected: null,
+  const FLOWER_NAMES = [
+    'Bunga 1 (Plum / 梅)', 'Bunga 2 (Orchid / 蘭)', 'Bunga 3 (Chrysanthemum / 菊)', 'Bunga 4 (Bamboo / 竹)',
+    'Musim 1 (Spring / 春)', 'Musim 2 (Summer / 夏)', 'Musim 3 (Autumn / 秋)', 'Musim 4 (Winter / 冬)'
+  ];
+  const FLOWER_SIGNS = ['梅', '蘭', '菊', '竹', '春', '夏', '秋', '冬'];
+  const isFlower = (t) => t >= 34 && t <= 41;
+
+  const state = {
+    players: [], wall: [], current: 0, phase: 'draw', selected: null,
     drawn: null, lastDiscard: null, pending: null, active: false, turn: 1,
-    generation: 0, log: [], winner: null };
+    generation: 0, log: [], winner: null
+  };
 
   const tileName = (t) => {
     if (t < 9) return `${t + 1} Karakter`;
     if (t < 18) return `${t - 8} Lingkaran`;
     if (t < 27) return `${t - 17} Bambu`;
-    return HONOR_NAMES[t - 27];
+    if (t < 34) return HONOR_NAMES[t - 27];
+    return FLOWER_NAMES[t - 34];
   };
+
   const tileShort = (t) => {
     if (t < 9) return `${t + 1} Wan`;
     if (t < 18) return `${t - 8} Pin`;
     if (t < 27) return `${t - 17} Sou`;
-    return HONOR_NAMES[t - 27];
+    if (t < 34) return HONOR_NAMES[t - 27];
+    return FLOWER_SIGNS[t - 34];
   };
+
   function tileArt(t) {
     if (t < 9) return `<span>${NUMBER_SIGNS[t]}</span><span class="tile-minor">萬</span>`;
     if (t < 18) return `<span>${'①②③④⑤⑥⑦⑧⑨'[t - 9]}</span><span class="tile-minor">筒</span>`;
     if (t < 27) return `<span>${NUMBER_SIGNS[t - 18]}</span><span class="tile-minor">索</span>`;
-    return HONORS[t - 27];
+    if (t < 34) return HONORS[t - 27];
+    const num = ((t - 34) % 4) + 1;
+    return `<span class="flower-no">${num}</span><span class="flower-sign">${FLOWER_SIGNS[t - 34]}</span>`;
   }
-  const tileColor = (t) => t < 9 ? 'blue' : t < 18 ? '' : t < 27 ? 'green' : t === 31 ? 'red' : t === 32 ? 'green' : t === 33 ? 'blue' : '';
+
+  const tileColor = (t) => {
+    if (t < 9) return 'blue';
+    if (t < 18) return '';
+    if (t < 27) return 'green';
+    if (t === 31) return 'red';
+    if (t === 32) return 'green';
+    if (t === 33) return 'blue';
+    if (t >= 34 && t <= 37) return 'flower-plum';
+    if (t >= 38 && t <= 41) return 'flower-season';
+    return '';
+  };
+
   function miniTile(t, latest = false) {
     return `<span class="mini-tile ${tileColor(t)} ${latest ? 'latest' : ''}" title="${tileName(t)}" aria-label="${tileName(t)}">${tileArt(t)}</span>`;
   }
@@ -43,12 +72,15 @@
     }
     return values;
   }
+
   const sortHand = (hand) => hand.sort((a, b) => a - b);
+
   function countsFor(hand) {
     const counts = Array(34).fill(0);
-    hand.forEach((t) => counts[t]++);
+    hand.forEach((t) => { if (t < 34) counts[t]++; });
     return counts;
   }
+
   function canMakeMelds(counts, groupsNeeded) {
     const first = counts.findIndex((n) => n > 0);
     if (first === -1) return groupsNeeded === 0;
@@ -68,6 +100,7 @@
     }
     return false;
   }
+
   function isWinningHand(hand, openMelds) {
     const needed = 4 - openMelds;
     if (needed < 0 || hand.length !== needed * 3 + 2) return false;
@@ -81,6 +114,137 @@
     return false;
   }
 
+  function findWinningDecomposition(hand, needed) {
+    const counts = countsFor(hand);
+    for (let pair = 0; pair < 34; pair++) {
+      if (counts[pair] < 2) continue;
+      counts[pair] -= 2;
+      const groups = [];
+      if (extractMelds(counts, needed, groups)) {
+        return { pair, groups };
+      }
+      counts[pair] += 2;
+    }
+    return null;
+  }
+
+  function extractMelds(counts, needed, groups) {
+    const first = counts.findIndex((n) => n > 0);
+    if (first === -1) return needed === 0;
+    if (!needed) return false;
+    if (counts[first] >= 3) {
+      counts[first] -= 3;
+      groups.push({ type: 'pong', tile: first });
+      if (extractMelds(counts, needed - 1, groups)) return true;
+      groups.pop();
+      counts[first] += 3;
+    }
+    if (first < 27 && first % 9 <= 6 && counts[first + 1] && counts[first + 2]) {
+      counts[first]--; counts[first + 1]--; counts[first + 2]--;
+      groups.push({ type: 'chow', tile: first });
+      if (extractMelds(counts, needed - 1, groups)) return true;
+      groups.pop();
+      counts[first]++; counts[first + 1]++; counts[first + 2]++;
+    }
+    return false;
+  }
+
+  function calculateFan(winnerSeat, mode, discarder, winningTile) {
+    const player = state.players[winnerSeat];
+    const items = [];
+    const needed = 4 - player.melds.length;
+    const decomp = findWinningDecomposition(player.hand, needed);
+
+    const allGroups = [
+      ...player.melds.map((m) => ({ type: m.kind === 'chi' ? 'chow' : 'pong', tile: m.tiles[0] })),
+      ...(decomp ? decomp.groups : [])
+    ];
+
+    if (mode === 'Tsumo') {
+      items.push({ name: 'Tsumo (Ambil Sendiri)', fan: 1 });
+    }
+
+    player.flowers.forEach((f) => {
+      if ((f - 34) % 4 === winnerSeat) {
+        items.push({ name: `Bunga Kursi (${tileShort(f)})`, fan: 1 });
+      }
+    });
+    const plumSet = player.flowers.filter((f) => f >= 34 && f <= 37);
+    if (plumSet.length === 4) {
+      items.push({ name: 'Set Lengkap 4 Bunga (梅蘭菊竹)', fan: 2 });
+    }
+    const seasonSet = player.flowers.filter((f) => f >= 38 && f <= 41);
+    if (seasonSet.length === 4) {
+      items.push({ name: 'Set Lengkap 4 Musim (春夏秋冬)', fan: 2 });
+    }
+    if (player.flowers.length === 0) {
+      items.push({ name: 'Tanpa Bunga (Wu Hua)', fan: 1 });
+    }
+
+    const dragonNames = { 31: 'Naga Merah (中)', 32: 'Naga Hijau (發)', 33: 'Naga Putih (白)' };
+    [31, 32, 33].forEach((dragon) => {
+      if (allGroups.some((g) => g.type === 'pong' && g.tile === dragon)) {
+        items.push({ name: `Pung ${dragonNames[dragon]}`, fan: 1 });
+      }
+    });
+
+    if (allGroups.some((g) => g.type === 'pong' && g.tile === 27)) {
+      items.push({ name: 'Pung Angin Ronde (Timur)', fan: 1 });
+    }
+    if (winnerSeat !== 0 && allGroups.some((g) => g.type === 'pong' && g.tile === 27 + winnerSeat)) {
+      items.push({ name: `Pung Angin Kursi (${WINDS[winnerSeat]})`, fan: 1 });
+    }
+
+    if (decomp && allGroups.length === 4) {
+      const isAllPongs = allGroups.every((g) => g.type === 'pong');
+      const isAllChows = allGroups.every((g) => g.type === 'chow') && decomp.pair < 27;
+
+      if (isAllPongs) {
+        items.push({ name: 'Dui Dui Hu (Semua Pung/Kembar)', fan: 3 });
+      } else if (isAllChows) {
+        items.push({ name: 'Ping Hu (Semua Chow/Runtun)', fan: 1 });
+      }
+
+      const allTiles = [
+        ...player.hand,
+        ...player.melds.flatMap((m) => m.tiles)
+      ];
+      const hasWan = allTiles.some((t) => t < 9);
+      const hasPin = allTiles.some((t) => t >= 9 && t < 18);
+      const hasSou = allTiles.some((t) => t >= 18 && t < 27);
+      const hasHonors = allTiles.some((t) => t >= 27 && t < 34);
+      const suitCount = (hasWan ? 1 : 0) + (hasPin ? 1 : 0) + (hasSou ? 1 : 0);
+
+      if (suitCount === 1 && !hasHonors) {
+        items.push({ name: 'Qing Yi Se (Satu Jenis Murni)', fan: 7 });
+      } else if (suitCount === 1 && hasHonors) {
+        items.push({ name: 'Hun Yi Se (Satu Jenis Campur Honor)', fan: 3 });
+      }
+    }
+
+    if (mode === 'Ron' && player.melds.filter((m) => m.from !== winnerSeat).length === 0) {
+      items.push({ name: 'Menqian Qing (Tangan Tertutup)', fan: 1 });
+    }
+
+    if (items.length === 0) {
+      items.push({ name: 'Ji Hu (Kombinasi Standar)', fan: 1 });
+    }
+
+    const totalFan = items.reduce((sum, item) => sum + item.fan, 0);
+    return { items, totalFan };
+  }
+
+  function fanToPoints(fan) {
+    if (fan <= 1) return 40;
+    if (fan === 2) return 80;
+    if (fan === 3) return 160;
+    if (fan === 4) return 320;
+    if (fan === 5) return 480;
+    if (fan === 6) return 640;
+    if (fan === 7) return 960;
+    return 1280;
+  }
+
   function enqueue(callback, ms = 580) {
     const generation = state.generation;
     setTimeout(() => {
@@ -89,21 +253,59 @@
       callback();
     }, ms);
   }
+
   function addLog(message) {
     state.log.unshift(message);
     state.log.length = Math.min(state.log.length, 15);
   }
+
   function setStatus(text) { $('statusText').textContent = text; }
+
+  function replaceInitialFlowers(seat) {
+    const player = state.players[seat];
+    let found = true;
+    while (found && state.wall.length) {
+      const idx = player.hand.findIndex(isFlower);
+      if (idx === -1) {
+        found = false;
+      } else {
+        const flower = player.hand.splice(idx, 1)[0];
+        player.flowers.push(flower);
+        const replacement = state.wall.pop();
+        player.hand.push(replacement);
+        if (seat === 0) {
+          addLog(`Kamu mendapat ${tileName(flower)} saat pembagian (diganti ubin baru).`);
+        }
+      }
+    }
+  }
 
   function startNewGame() {
     closeModal();
     state.generation++;
-    state.wall = shuffle(Array.from({ length: 34 }, (_, type) => Array(4).fill(type)).flat());
-    state.players = NAMES.map((name, seat) => ({ seat, name, hand: [], discards: [], melds: [] }));
-    for (let n = 0; n < 13; n++) for (let seat = 0; seat < 4; seat++) {
-      state.players[seat].hand.push(state.wall.pop());
+    const standardTiles = Array.from({ length: 34 }, (_, type) => Array(4).fill(type)).flat();
+    const flowerTiles = [34, 35, 36, 37, 38, 39, 40, 41];
+    state.wall = shuffle([...standardTiles, ...flowerTiles]);
+    state.players = NAMES.map((name, seat) => ({
+      seat,
+      name,
+      hand: [],
+      discards: [],
+      melds: [],
+      flowers: [],
+      score: state.players[seat]?.score ?? 10000
+    }));
+
+    for (let n = 0; n < 13; n++) {
+      for (let seat = 0; seat < 4; seat++) {
+        state.players[seat].hand.push(state.wall.pop());
+      }
     }
-    state.players.forEach((p) => sortHand(p.hand));
+    for (let seat = 0; seat < 4; seat++) {
+      replaceInitialFlowers(seat);
+      sortHand(state.players[seat].hand);
+    }
+
     state.current = 0;
     state.phase = 'draw';
     state.selected = null;
@@ -114,16 +316,27 @@
     state.winner = null;
     state.turn = 1;
     state.log = [];
-    addLog('Permainan dimulai. Kamu duduk di kursi Timur.');
+    addLog('Ronde dimulai (144 Ubin meja Jakarta Lounge). Kamu duduk di kursi Timur.');
     setStatus('Giliranmu: ambil satu ubin dari tumpukan.');
     render();
   }
 
   function drawFromWall(seat, replacement = false) {
     if (!state.wall.length) { finishDraw(); return null; }
-    const tile = state.wall.pop();
-    state.players[seat].hand.push(tile);
-    sortHand(state.players[seat].hand);
+    let tile = state.wall.pop();
+    const player = state.players[seat];
+    while (isFlower(tile) && state.wall.length) {
+      player.flowers.push(tile);
+      addLog(`${NAMES[seat]} menarik ${tileName(tile)}! Ubin bunga dipajang & ambil pengganti.`);
+      tile = state.wall.pop();
+    }
+    if (isFlower(tile)) {
+      player.flowers.push(tile);
+      finishDraw();
+      return null;
+    }
+    player.hand.push(tile);
+    sortHand(player.hand);
     if (seat === 0) state.drawn = tile;
     if (replacement) addLog(`${NAMES[seat]} mengambil ubin pengganti Kan.`);
     return tile;
@@ -153,7 +366,7 @@
   }
 
   function availableClaims(seat, discarder, tile) {
-    if (seat === discarder) return [];
+    if (seat === discarder || tile >= 34) return [];
     const player = state.players[seat];
     const counts = countsFor(player.hand);
     const options = [];
@@ -374,22 +587,57 @@
     state.pending = null;
     state.winner = winner;
     state.generation++;
-    addLog(`${NAMES[winner]} menang melalui ${mode}!`);
-    setStatus(`${NAMES[winner]} menang — ${mode}!`);
-    render();
+
     const player = state.players[winner];
-    const meldBonus = player.melds.filter((m) => m.kind === 'kan').length * 300;
-    const points = 1000 + (mode === 'Tsumo' ? 500 : 0) + meldBonus;
-    if (winner === 0) {
-      try { localStorage.setItem('mahjong-riichi-wins', String((Number(localStorage.getItem('mahjong-riichi-wins')) || 0) + 1)); }
-      catch (_e) { /* Record storage is optional. */ }
+    const { items, totalFan } = calculateFan(winner, mode, discarder, winningTile);
+    const basePoints = fanToPoints(totalFan);
+
+    let paymentText = '';
+    if (mode === 'Ron' && discarder !== null) {
+      const shooterPay = basePoints * 2;
+      state.players[discarder].score -= shooterPay;
+      state.players[winner].score += shooterPay;
+      paymentText = `<strong>${NAMES[discarder]}</strong> (Shooter) membayar <strong>${shooterPay.toLocaleString('id-ID')} poin</strong> ke <strong>${NAMES[winner]}</strong>.`;
+      addLog(`${NAMES[discarder]} membayar ${shooterPay.toLocaleString('id-ID')} poin ke ${NAMES[winner]}.`);
+    } else {
+      let totalWon = 0;
+      for (let s = 0; s < 4; s++) {
+        if (s !== winner) {
+          state.players[s].score -= basePoints;
+          totalWon += basePoints;
+        }
+      }
+      state.players[winner].score += totalWon;
+      paymentText = `Ketiga pemain lawan masing-masing membayar <strong>${basePoints.toLocaleString('id-ID')} poin</strong> ke <strong>${NAMES[winner]}</strong> (Total: +${totalWon.toLocaleString('id-ID')} poin).`;
+      addLog(`Setiap lawan membayar ${basePoints.toLocaleString('id-ID')} poin ke ${NAMES[winner]}.`);
     }
+
+    addLog(`${NAMES[winner]} menang via ${mode} (${totalFan} Fan)!`);
+    setStatus(`${NAMES[winner]} menang — ${mode} (${totalFan} Fan)!`);
+    render();
+
+    const fanListHtml = items.map((it) => `<div class="fan-row"><span>✦ ${it.name}</span><strong>+${it.fan} Fan</strong></div>`).join('');
+    const scoreBoardHtml = state.players.map((p) => `<div class="score-pill ${p.seat === winner ? 'winner-pill' : ''}"><span>${WIND_SIGNS[p.seat]} ${p.name}</span><strong>${p.score.toLocaleString('id-ID')} pts</strong></div>`).join('');
+
     showModal({
       icon: winner === 0 ? '✿' : WIND_SIGNS[winner],
-      kicker: 'RONDE SELESAI',
+      kicker: 'RONDE SELESAI · HONG KONG STYLE',
       title: winner === 0 ? 'Mahjong! Kamu menang!' : `${NAMES[winner]} menang!`,
-      body: `<p><strong>${NAMES[winner]}</strong> menyelesaikan 4 kelompok dan 1 pasang melalui <strong>${mode}</strong>${discarder === null ? '' : ` dari buangan ${NAMES[discarder]}`}.</p><div class="winner-big">${points.toLocaleString('id-ID')}</div><div class="winner-stat">poin latihan • ${player.melds.length} kelompok terbuka • ${state.wall.length} ubin tersisa</div><p>Sistem poin ini disederhanakan, bukan skor resmi Riichi.</p>`,
-      actions: [{ text: 'Main Lagi', primary: true, run: startNewGame }],
+      body: `
+        <div class="winner-summary">
+          <p><strong>${NAMES[winner]}</strong> menyelesaikan tangan dengan <strong>${mode}</strong>${discarder !== null ? ` dari buangan ${NAMES[discarder]}` : ''}.</p>
+          <div class="fan-box">
+            <div class="fan-header"><span>RINCIAN FAN</span><strong>TOTAL: ${totalFan} FAN</strong></div>
+            <div class="fan-items">${fanListHtml}</div>
+          </div>
+          <div class="winner-big">${basePoints.toLocaleString('id-ID')} <small style="font-size:14px;font-weight:normal;">poin dasar</small></div>
+          <div class="payment-notice">${paymentText}</div>
+          <div class="score-table-label">KLASEMEN SKOR MEJA:</div>
+          <div class="score-pill-container">${scoreBoardHtml}</div>
+          <p class="table-disclaimer">Sesuai peraturan lounge Jakarta: Tanpa taruhan uang asli • 100% hiburan & olahraga otak.</p>
+        </div>
+      `,
+      actions: [{ text: 'Main Ronde Berikutnya', primary: true, run: startNewGame }]
     });
   }
 
@@ -401,9 +649,18 @@
     addLog('Tumpukan habis. Ronde berakhir seri.');
     setStatus('Ronde seri — tidak ada ubin tersisa.');
     render();
-    showModal({ icon: '✧', kicker: 'RONDE SELESAI', title: 'Ronde berakhir seri',
-      body: '<p>Semua ubin di tumpukan telah habis. Tidak ada pemain yang menyelesaikan kombinasi Mahjong.</p>',
-      actions: [{ text: 'Coba Lagi', primary: true, run: startNewGame }] });
+    const scoreBoardHtml = state.players.map((p) => `<div class="score-pill"><span>${WIND_SIGNS[p.seat]} ${p.name}</span><strong>${p.score.toLocaleString('id-ID')} pts</strong></div>`).join('');
+    showModal({
+      icon: '✧',
+      kicker: 'RONDE SELESAI',
+      title: 'Ronde berakhir seri',
+      body: `
+        <p>Semua ubin di tumpukan telah habis. Tidak ada pemain yang menyelesaikan kombinasi Mahjong.</p>
+        <div class="score-table-label">SKOR SAAT INI:</div>
+        <div class="score-pill-container">${scoreBoardHtml}</div>
+      `,
+      actions: [{ text: 'Coba Lagi', primary: true, run: startNewGame }]
+    });
   }
 
   function createButton(label, className, callback, disabled = false) {
@@ -423,7 +680,17 @@
       container.classList.toggle('current', state.current === seat && state.active);
       const backs = Array.from({ length: Math.min(9, player.hand.length) }, () => '<i class="tile-back"></i>').join('');
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
-      container.innerHTML = `<span class="opp-avatar">${WIND_SIGNS[seat]}</span><div class="opp-info"><div class="opp-name">${player.name}</div><div class="opp-sub">${WINDS[seat]} · ${player.hand.length} ubin</div></div><div class="opp-backs">${backs}</div>${melds ? `<div class="opp-melds">${melds}</div>` : ''}`;
+      const flowers = player.flowers.length ? `<div class="opp-flowers"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
+      container.innerHTML = `
+        <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
+        <div class="opp-info">
+          <div class="opp-name">${player.name}</div>
+          <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} ubin · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
+        </div>
+        <div class="opp-backs">${backs}</div>
+        ${melds ? `<div class="opp-melds">${melds}</div>` : ''}
+        ${flowers}
+      `;
     }
   }
 
@@ -458,6 +725,18 @@
       container.appendChild(btn);
     });
     $('handCount').textContent = `${hand.length} ubin`;
+
+    const myFlowers = $('myFlowers');
+    if (myFlowers) {
+      myFlowers.hidden = !state.players[0].flowers.length;
+      myFlowers.innerHTML = `<span class="flower-badge">🌸 Ubin Bunga & Musim (${state.players[0].flowers.length}):</span> ${state.players[0].flowers.map((t) => miniTile(t)).join('')}`;
+    }
+
+    const myScore = $('myScoreDisplay');
+    if (myScore) {
+      myScore.textContent = `${state.players[0].score.toLocaleString('id-ID')} pts`;
+    }
+
     const meldTray = $('myMelds');
     meldTray.hidden = !state.players[0].melds.length;
     meldTray.innerHTML = state.players[0].melds.map((meld) => `<div class="meld-group"><span class="meld-name">${meld.kind.toUpperCase()}</span>${meld.tiles.map((t) => miniTile(t)).join('')}</div>`).join('');
@@ -512,7 +791,7 @@
     const left = state.wall.length;
     $('wallNumber').textContent = left;
     $('centerWall').textContent = left;
-    $('wallProgress').style.width = `${left / 84 * 100}%`;
+    $('wallProgress').style.width = `${Math.min(100, (left / 92) * 100)}%`;
     $('turnCounter').textContent = `GILIRAN ${state.turn}`;
     $('eventLog').innerHTML = state.log.slice(0, 8).map((event) => `<div class="event-line"><span class="event-dot">✦</span><span>${event}</span></div>`).join('');
   }
@@ -532,22 +811,50 @@
   function closeModal() { $('overlay').hidden = true; }
 
   function showRules() {
-    showModal({ icon: '中', kicker: 'ATURAN RIICHI SEDERHANA', title: 'Cara bermain',
-      body: `<p>Mahjong dimainkan <strong>4 orang</strong>. Kamu di kursi Timur melawan tiga bot. Targetnya melengkapi <strong>4 kelompok + 1 pasangan</strong>.</p>
-        <ul class="modal-rules"><li><b>1. Ambil & buang</b> Ambil satu ubin saat giliranmu, pilih satu yang tidak dibutuhkan, lalu tekan Buang Ubin.</li>
-        <li><b>2. Chi (Chow)</b> Ambil buangan pemain tepat sebelum giliranmu untuk menyusun 3 angka berurutan dalam jenis yang sama.</li>
-        <li><b>3. Pon (Pung)</b> Ambil buangan siapa pun untuk membuat 3 ubin identik.</li>
-        <li><b>4. Kan (Kong)</b> Buat 4 ubin identik. Kamu akan langsung mendapat ubin pengganti.</li>
-        <li><b>5. Ron / Tsumo</b> Menang dengan buangan lawan disebut Ron, dengan ubin yang kamu ambil sendiri disebut Tsumo.</li></ul>
-        <p>Ini versi belajar: tanpa syarat yaku, furiten, dora, atau penghitungan skor Riichi resmi. Bot dapat mengklaim buangan, dan 136 ubin digunakan tanpa bunga.</p>`,
-      actions: [{ text: 'Mengerti, ayo main!', primary: true, run: closeModal }] });
+    showModal({
+      icon: '中',
+      kicker: 'ATURAN MAHJONG VIRAL JAKARTA · 144 UBIN',
+      title: 'Panduan Cara Bermain',
+      body: `
+        <p>Aturan ini disesuaikan dengan standar kafe & lounge Mahjong yang sedang viral di Jakarta (seperti di PIK, Senopati, Kelapa Gading) menggunakan format <strong>Hong Kong Mahjong 144 Ubin</strong>.</p>
+        <ul class="modal-rules">
+          <li><b>1. Set 144 Ubin Lengkap</b> Menggunakan 108 ubin angka (Wan, Pin, Sou), 28 ubin kehormatan (Angin Timur/Selatan/Barat/Utara & Naga Merah/Hijau/Putih), serta <b>8 Ubin Bunga & Musim</b> (梅 蘭 菊 竹 • 春 夏 秋 冬).</li>
+          <li><b>2. Ubin Bunga & Musim Otomatis</b> Saat menarik ubin bunga, ubin otomatis dipajang dan kamu langsung mengambil ubin pengganti dari tembok. Bunga yang nomornya cocok dengan kursimu memberi <b>+1 Fan</b>!</li>
+          <li><b>3. Syarat Menang (Mahjong / Hu)</b> Susun <b>4 kelompok (Chi / Pon / Kan) + 1 pasang ubin kembar</b> (total 14 ubin).</li>
+          <li><b>4. Klaim Ubin Buangan Lawan</b>
+            <br>• <b>Chi</b>: 3 angka berurutan sejenis (hanya dari pemain sebelah kiri).
+            <br>• <b>Pon</b>: 3 ubin kembar identik (dari siapa saja).
+            <br>• <b>Kan</b>: 4 ubin kembar identik (dari siapa saja atau tertutup, mendapat ubin pengganti).
+          </li>
+          <li><b>5. Sistem Nilai Fan (Hong Kong Scoring)</b>
+            <br>• <b>Tsumo</b> (menang ambil sendiri): +1 Fan
+            <br>• <b>Bunga Kursi</b> (nomor bunga sesuai nomor kursi): +1 Fan
+            <br>• <b>Ping Hu</b> (semua Chi runtun): +1 Fan
+            <br>• <b>Pung Naga / Angin Kursi</b>: +1 Fan
+            <br>• <b>Dui Dui Hu</b> (semua Pung kembar): +3 Fan
+            <br>• <b>Hun Yi Se</b> (satu jenis angka + naga/angin): +3 Fan
+            <br>• <b>Qing Yi Se</b> (satu jenis angka murni): +7 Fan
+          </li>
+          <li><b>6. Sistem Pembayaran Meja Lounge</b>
+            <br>• <b>Ron</b>: Pemain yang membuang ubin (Shooter) membayar penuh kekalahan.
+            <br>• <b>Tsumo</b>: Ketiga pemain lawan masing-masing membayar rata.
+          </li>
+          <li><b>7. Strictly No Gambling</b> Murni dimainkan sebagai rekreasi sosial, strategi, dan olahraga asah otak bersama teman.</li>
+        </ul>
+      `,
+      actions: [{ text: 'Mengerti, ayo main!', primary: true, run: closeModal }]
+    });
   }
 
   function confirmNewGame() {
     if (!state.active) { startNewGame(); return; }
-    showModal({ icon: '✧', kicker: 'RONDE BARU', title: 'Mulai permainan baru?',
-      body: '<p>Susunan, buangan, dan giliran ronde ini akan direset. Tangan baru akan dibagikan untuk keempat pemain.</p>',
-      actions: [{ text: 'Batal', run: closeModal }, { text: 'Ya, Bagikan Ubin', primary: true, run: startNewGame }] });
+    showModal({
+      icon: '✧',
+      kicker: 'RONDE BARU',
+      title: 'Mulai ronde baru?',
+      body: '<p>Susunan, buangan, dan giliran ronde ini akan direset. Tangan baru dari 144 ubin akan dibagikan untuk keempat pemain (saldo poin tetap berjalan).</p>',
+      actions: [{ text: 'Batal', run: closeModal }, { text: 'Ya, Bagikan Ubin', primary: true, run: startNewGame }]
+    });
   }
 
   $('rulesTop').addEventListener('click', showRules);

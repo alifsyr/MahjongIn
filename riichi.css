@@ -125,6 +125,27 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
 .modal-rules { padding: 0; margin: 13px 0; list-style: none; text-align: left; }.modal-rules li { padding: 10px 0; border-bottom: 1px solid #edddaf28; }.modal-rules li b { margin-right: 9px; color: #ebd19b; }
 .modal-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 9px; margin-top: 18px; }.modal-actions button { padding: 12px 17px; border: 1px solid #d6bd88; border-radius: 7px; background: #dec48c; color: #13382b; font-size: 12px; font-weight: 600; }.modal-actions button.subtle { background: transparent; color: #e9d7b0; }
 .winner-big { color: #f3d18a; margin: 12px 0 2px; font: 44px Georgia,serif; }.winner-stat { color: #b9ceb8; font-size: 12px; }
+.mini-tile.flower-plum, .hand-tile.flower-plum { color: #c83838; }
+.mini-tile.flower-season, .hand-tile.flower-season { color: #b87c18; }
+.flower-no { font-size: 11px; font-weight: bold; margin-bottom: -2px; }
+.flower-sign { font-size: 21px; }
+.flower-tray { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; padding: 6px 10px; background: #0c2b23; border: 1px dashed #d2af7466; border-radius: 6px; }
+.flower-badge { font-size: 10px; color: #f0d5a3; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.opp-flowers { display: flex; align-items: center; gap: 3px; margin-left: 5px; }
+.flower-icon { font-size: 11px; }
+.opp-score { color: #fedb9b; font-weight: 600; }
+.score-display { color: #ffd88a; font-weight: 600; }
+.winner-summary { text-align: left; }
+.fan-box { margin: 14px 0; padding: 12px; background: #0c2b23; border: 1px solid #d4b88266; border-radius: 8px; }
+.fan-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #ebd19b; border-bottom: 1px solid #eccf9833; padding-bottom: 6px; margin-bottom: 8px; }
+.fan-items { display: flex; flex-direction: column; gap: 5px; }
+.fan-row { display: flex; justify-content: space-between; font-size: 12px; color: #dce7dc; }
+.payment-notice { margin: 10px 0; padding: 9px 12px; background: #1a493b88; border-left: 3px solid #e5c88b; font-size: 12px; border-radius: 4px; color: #f5eedb; }
+.score-table-label { font-size: 10px; letter-spacing: .12em; color: #a6bfa9; margin-top: 14px; margin-bottom: 6px; }
+.score-pill-container { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.score-pill { display: flex; justify-content: space-between; padding: 8px 10px; background: #0f352c; border: 1px solid #bb9f6e55; border-radius: 6px; font-size: 11px; color: #e9e3d3; }
+.score-pill.winner-pill { border-color: #e5c98d; background: #205342; font-weight: 600; color: #fff3db; }
+.table-disclaimer { margin-top: 12px; font-size: 10px; color: #8fae9b; text-align: center; }
 @media(max-width:1150px) {
   .app { padding: 0 24px; }.layout { grid-template-columns: minmax(0,1fr) 245px; gap: 15px; }.info-card { padding: 16px; }.top-caption { display: none; }
   .opponent-left { left: 14px; }.opponent-right { right: 14px; }.pond { left: 15%; right: 15%; }.hand-tile { width: 45px; height: 59px; font-size: 25px; }
