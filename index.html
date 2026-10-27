@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b2622" />
+  <meta name="description" content="Mahjong 4 pemain: mainkan Riichi Mahjong sederhana melawan tiga bot dengan Chi, Pon, Kan, Ron, dan Tsumo." />
+  <title>Mahjong Garden — Riichi Table</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23102f2b'/%3E%3Crect x='16' y='11' width='32' height='42' rx='5' fill='%23f3e7cc'/%3E%3Ctext x='32' y='42' font-family='serif' font-size='26' fill='%23b44b3a' text-anchor='middle'%3E中%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./riichi.css" />
+  <script src="./riichi.js" defer></script>
+</head>
+<body>
+  <div class="ambient-one" aria-hidden="true"></div>
+  <div class="app">
+    <header class="topbar">
+      <a href="#table" class="brand" aria-label="Ke meja Mahjong"><span class="brand-icon">中</span><span class="brand-word"><strong>MAHJONG</strong><small>G A R D E N</small></span></a>
+      <div class="top-caption"><span>✧</span> THE RIICHI TABLE <span>✧</span></div>
+      <div class="top-actions"><span class="live-pill"><span class="live-dot"></span> MODE SOLO • 3 BOT</span><button id="rulesTop" class="outline-small">? <span>Cara Main</span></button></div>
+    </header>
+
+    <div class="title-area"><div class="eyebrow">TRADISI JEPANG · STRATEGI EMPAT PEMAIN</div><h1>Setiap ubin punya <em>cerita.</em></h1><p>Susun kombinasi, baca langkah lawan, dan raih Mahjong.</p></div>
+
+    <main class="layout" id="table">
+      <section class="game-side" aria-label="Meja permainan Mahjong empat pemain">
+        <div class="table-toolbar"><div><span class="tiny-upper">RONDE SAAT INI</span><h2>Angin Timur <span class="small-roman">I</span></h2></div><div class="table-toolbar-right"><span id="turnCounter">GILIRAN 1</span><button id="newGame" class="text-button">↻ <span>Game Baru</span></button></div></div>
+
+        <div class="mahjong-table" id="mahjongTable">
+          <div class="corner tl">✦</div><div class="corner tr">✦</div><div class="corner bl">✦</div><div class="corner br">✦</div>
+          <div class="board-topline">✦ <span>MAHJONG GARDEN CLUB</span> ✦</div>
+          <div class="opponent opponent-top" id="bot2"></div>
+          <div class="opponent opponent-left" id="bot3"></div>
+          <div class="opponent opponent-right" id="bot1"></div>
+          <div class="pond">
+            <div class="discard-area discard-north" id="discard2"></div>
+            <div class="discard-area discard-west" id="discard3"></div>
+            <div class="center-emblem"><div class="emblem-compass">東</div><strong id="centerWall">84</strong><small>UBIN TERSISA</small></div>
+            <div class="discard-area discard-east" id="discard1"></div>
+            <div class="discard-area discard-south" id="discard0"></div>
+          </div>
+          <div class="board-footline">✿ <span>PLAY WITH PATIENCE</span> ✿</div>
+        </div>
+
+        <div class="hand-section">
+          <div class="hand-header"><div class="player-avatar">東</div><div><div class="player-label">KURSI TIMUR · KAMU</div><strong>Tanganmu <span id="handCount">13 ubin</span></strong></div><div class="turn-indicator" id="turnIndicator">MENUNGGU</div></div>
+          <div class="meld-tray" id="myMelds" hidden></div>
+          <div class="hand-container"><div id="myHand" class="my-hand" role="group" aria-label="Ubin di tanganmu"></div></div>
+          <div id="drawnNote" class="hand-help">Pilih <strong>Ambil Ubin</strong> untuk memulai giliran.</div>
+          <div id="actionBar" class="action-bar"></div>
+          <div id="claimBar" class="claim-bar" hidden></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="info-card wall-card"><div class="card-label"><span>STATUS PERMAINAN</span><span>✿</span></div><div class="wall-number"><strong id="wallNumber">84</strong><span>ubin di tumpukan</span></div><div class="wall-meter"><div id="wallProgress"></div></div><div class="status-box" id="statusText" role="status" aria-live="polite">Giliranmu untuk mengambil ubin.</div></div>
+        <div class="info-card target-card"><div class="card-label"><span>TARGET KEMENANGAN</span><span>✧</span></div><h3>4 kelompok <span>+</span> 1 pasang</h3><p>Lengkapi empat set kombinasi dan sepasang ubin kembar untuk menang.</p><div class="rule-mini"><div><b>CHI</b><span>3 angka berurutan</span></div><div><b>PON</b><span>3 ubin identik</span></div><div><b>KAN</b><span>4 ubin identik</span></div></div><button id="rulesSide" class="learn-button">Pelajari semua aturan <span>↗</span></button></div>
+        <div class="info-card event-card"><div class="card-label"><span>RIWAYAT LANGKAH</span><span>↗</span></div><div id="eventLog" class="event-log"></div></div>
+        <div class="sidebar-quote"><span>“</span>Kesabaran adalah bagian dari strategi.</div>
+      </aside>
+    </main>
+    <footer>✿ Dibuat untuk belajar Mahjong sambil bermain ✿ <span>•</span> Tanpa taruhan atau uang asli</footer>
+  </div>
+
+  <div id="overlay" class="overlay" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button id="modalClose" class="modal-close" aria-label="Tutup dialog">×</button><div id="modalIcon" class="modal-icon">中</div><div id="modalKicker" class="modal-kicker">SELAMAT DATANG</div><h2 id="modalTitle">Cara bermain</h2><div id="modalContent" class="modal-content"></div><div id="modalActions" class="modal-actions"></div></div></div>
+</body>
+</html>
