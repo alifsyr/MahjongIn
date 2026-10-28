@@ -30,11 +30,22 @@ File **Mahjong-Riichi-4-Pemain.html** adalah berkas tunggal mandiri (*all-in-one
   - Saldo poin tiap pemain tercatat dan terus berjalan di setiap ronde.
 - **Strictly No Gambling**: Murni untuk hiburan santai, strategi, dan olahraga asah otak.
 
-## Menjalankan Pengujian
+## Pengujian & CI/CD
 
+Jalankan seluruh test suite secara lokal:
 ```sh
-node tests/rules.test.mjs
+npm test
 ```
+
+Periksa atau buat ulang berkas mandiri (all-in-one bundle):
+```sh
+npm run bundle:check
+npm run bundle
+```
+
+CI/CD otomatis berjalan via GitHub Actions pada setiap push ke branch `master`:
+1. **Test & Validation**: Menjalankan pengujian aturan lounge dan skenario tutorial interaktif, serta validasi sinkronisasi bundle.
+2. **Deploy to GitHub Pages**: Otomatis mendistribusikan pembaruan ke [GitHub Pages](https://alifsyr.github.io/MahjongIn/).
 
 ## Skills Terpasang
 

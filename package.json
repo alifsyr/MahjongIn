@@ -1,0 +1,12 @@
+{
+  "name": "mahjongin",
+  "version": "1.0.0",
+  "description": "Mahjong Jakarta Club - 144 Ubin Hong Kong Style",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/rules.test.mjs && node tests/tutorial.test.mjs",
+    "bundle": "node scripts/bundle.mjs",
+    "bundle:check": "node scripts/bundle.mjs --check"
+  }
+}
