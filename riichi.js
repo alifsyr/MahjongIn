@@ -640,7 +640,7 @@
     }
 
     addLog(`${NAMES[winner]} menang via ${mode} (${totalFan} Fan)!`);
-    setStatus(`${NAMES[winner]} menang — ${mode} (${totalFan} Fan)!`);
+    setStatus(`${NAMES[winner]} menang: ${mode} (${totalFan} Fan)!`);
     render();
 
     const fanListHtml = items.map((it) => `<div class="fan-row"><span>✦ ${it.name}</span><strong>+${it.fan} Fan</strong></div>`).join('');
@@ -674,7 +674,7 @@
     state.phase = 'over';
     state.generation++;
     addLog('Tumpukan habis. Ronde berakhir seri.');
-    setStatus('Ronde seri — tidak ada ubin tersisa.');
+    setStatus('Ronde seri: tidak ada ubin tersisa.');
     render();
     const scoreBoardHtml = state.players.map((p) => `<div class="score-pill"><span>${WIND_SIGNS[p.seat]} ${p.name}</span><strong>${p.score.toLocaleString('id-ID')} pts</strong></div>`).join('');
     showModal({
@@ -803,7 +803,7 @@
     claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} membuang ${tileName(tile)}</strong><span>Pilih klaim atau lanjutkan giliran biasa.</span></div><div class="claim-options" id="claimOptions"></div>`;
     const choices = $('claimOptions');
     options.forEach((option, index) => {
-      const name = option.kind === 'ron' ? '✿ RON — Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON — Kembar 3' : 'KAN — Kembar 4';
+      const name = option.kind === 'ron' ? '✿ RON : Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON : Kembar 3' : 'KAN : Kembar 4';
       choices.append(createButton(name, 'claim-action', () => playerClaim(index)));
     });
     choices.append(createButton('Lewati', 'claim-action pass', passClaim));
@@ -830,7 +830,7 @@
     $('modalContent').innerHTML = body;
     $('modalActions').replaceChildren();
     actions.forEach((action) => {
-      $('modalActions').append(createButton(action.text, action.primary ? '' : 'subtle', action.run));
+      $('modalActions').append(createButton(action.text, action.primary ? '' : 'subtle', action.run, !!action.disabled));
     });
     $('overlay').hidden = false;
     $('modalClose').focus();
@@ -869,9 +869,590 @@
           <li><b>7. Strictly No Gambling</b> Murni dimainkan sebagai rekreasi sosial, strategi, dan olahraga asah otak bersama teman.</li>
         </ul>
       `,
-      actions: [{ text: 'Mengerti, ayo main!', primary: true, run: closeModal }]
+      actions: [
+        { text: '✦ Mulai Tutorial Interaktif', primary: true, run: startTutorialSafe },
+        { text: 'Tutup', run: closeModal }
+      ]
     });
   }
+
+  function leaveOnlineRoom() {
+    onlineSession = null;
+    const bar = $('onlineBar');
+    if (bar) bar.hidden = true;
+  }
+
+  function startTutorialSafe() {
+    if (onlineSession) {
+      if (!confirm('Kamu sedang berada di room online aktif. Keluar dari room untuk memulai tutorial?')) {
+        return;
+      }
+      leaveOnlineRoom();
+    }
+    TutorialManager.start();
+  }
+
+  function renderTutorialTileBtn(t, isSelected, index, customAttr = '') {
+    const col = tileColor(t);
+    const label = tileName(t);
+    const sel = isSelected ? 'selected' : '';
+    return `<button type="button" class="tutorial-tile-btn ${col} ${sel}" data-idx="${index}" ${customAttr} title="${label}" aria-label="${label}">${tileArt(t)}</button>`;
+  }
+
+  function renderTutorialStepBar(step) {
+    const pct = Math.round(((step + 1) / 8) * 100);
+    return `
+      <div class="tutorial-step-bar">
+        <span class="tutorial-step-badge">LANGKAH ${step + 1} DARI 8</span>
+        <div class="tutorial-progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+          <div class="tutorial-progress-fill" style="width: ${pct}%"></div>
+        </div>
+        <span class="tutorial-step-badge">${pct}%</span>
+      </div>
+    `;
+  }
+
+  const TutorialManager = {
+    active: false,
+    step: 0,
+    substep: 0,
+    selectedTiles: [],
+    lastHint: null,
+    validated: false,
+    quizSelected: null,
+
+    isActive() {
+      return this.active;
+    },
+
+    start(step = 0) {
+      this.active = true;
+      this.step = step;
+      this.substep = 0;
+      this.selectedTiles = [];
+      this.lastHint = null;
+      this.validated = false;
+      this.quizSelected = null;
+      this.render();
+    },
+
+    stop() {
+      this.active = false;
+    },
+
+    next() {
+      if (this.step < 7) {
+        this.step++;
+        this.substep = 0;
+        this.selectedTiles = [];
+        this.lastHint = null;
+        this.validated = false;
+        this.quizSelected = null;
+        this.render();
+      } else {
+        this.complete();
+      }
+    },
+
+    prev() {
+      if (this.step > 0) {
+        this.step--;
+        this.substep = 0;
+        this.selectedTiles = [];
+        this.lastHint = null;
+        this.validated = false;
+        this.quizSelected = null;
+        this.render();
+      }
+    },
+
+    skip() {
+      localStorage.setItem('mahjong-tutorial-dismissed', 'true');
+      this.stop();
+      closeModal();
+      const banner = $('tutorialBanner');
+      if (banner) banner.hidden = true;
+    },
+
+    complete() {
+      localStorage.setItem('mahjong-tutorial-completed', 'true');
+      this.stop();
+      closeModal();
+      const banner = $('tutorialBanner');
+      if (banner) banner.hidden = true;
+      startNewGame();
+    },
+
+    render() {
+      const stepIcons = ['🀄', '東', '⚡', '🌸', '↻', '⚡', '🏆', '💰'];
+      const stepKickers = [
+        'TUTORIAL INTERAKTIF · LANGKAH 1 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 2 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 3 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 4 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 5 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 6 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 7 DARI 8',
+        'TUTORIAL INTERAKTIF · LANGKAH 8 DARI 8'
+      ];
+      const stepTitles = [
+        '1. Target Menang: 4 Melds + 1 Pair',
+        '2. Mengenal 144 Tiles',
+        '3. Membentuk Set (Chi, Pon, Kan)',
+        '4. Tiles Bunga & Musim (Bonus Fan)',
+        '5. Alur Giliran (Draw & Discard)',
+        '6. Mengklaim Discard Lawan',
+        '7. Kemenangan (Ron vs Tsumo) & Fan',
+        '8. Perhitungan Skor & Aturan Shooter'
+      ];
+
+      let bodyHtml = renderTutorialStepBar(this.step);
+
+      if (this.step === 0) {
+        const tiles = [0, 1, 2, 12, 13, 14, 24, 25, 26, 31, 31, 31, 27, 27];
+        const tilesHtml = tiles.map((t, idx) =>
+          renderTutorialTileBtn(t, this.selectedTiles.includes(idx), idx)
+        ).join('');
+        let fbClass = 'neutral';
+        let fbText = 'Pilih 2 tiles kembar identik yang berfungsi sebagai Pair (Mata).';
+        if (this.selectedTiles.length === 2) {
+          if (this.selectedTiles.includes(12) && this.selectedTiles.includes(13)) {
+            fbClass = 'success';
+            fbText = 'Tepat sekali! Dua tile Angin Timur ini adalah Pair (Mata) yang melengkapi 4 Melds menjadi 14 tiles kemenangan.';
+          } else {
+            fbClass = 'hint';
+            fbText = 'Tile ini bagian dari Meld (set 3 tile). Cari 2 tile kembar identik yang berdiri sebagai Pair (Mata).';
+          }
+        }
+        bodyHtml += `
+          <div class="tutorial-desc">Dalam Mahjong, kamu memegang 13 tiles di Hand. Kamu menang saat berhasil mengumpulkan <strong>4 kelompok (Melds) + 1 pasang kembar identik (Pair / Mata)</strong> sehingga total menjadi 14 tiles.</div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> LATIHAN: TEMUKAN PAIR (MATA)</div>
+            <div class="tutorial-task-desc">Di bawah adalah 14 tiles susunan menang (4 melds + 1 pair). Klik 2 tiles kembar identik yang menjadi Pair (Mata):</div>
+            <div class="tutorial-tiles-wrap" id="tutTilesContainer">${tilesHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 1) {
+        const tiles = [0, 31, 13, 32, 22, 33, 27];
+        const tilesHtml = tiles.map((t, idx) =>
+          renderTutorialTileBtn(t, this.selectedTiles.includes(idx), idx)
+        ).join('');
+        let fbClass = 'neutral';
+        let fbText = 'Pilih ketiga tile Naga (Merah, Hijau, Putih).';
+        if (this.lastHint) {
+          fbClass = 'hint';
+          fbText = this.lastHint;
+        }
+        if (this.validated) {
+          fbClass = 'success';
+          fbText = 'Mantap! Tiga Naga (Merah, Hijau, Putih) adalah Honor Tiles bernilai tinggi yang bisa memberi Fan bonus.';
+        }
+        bodyHtml += `
+          <div class="tutorial-desc">Mahjong Jakarta menggunakan 144 tiles: 3 suit <strong>Number Tiles</strong> (Wan/Karakter, Pin/Lingkaran, Sou/Bambu) angka 1-9 (masing-masing 4 copy), <strong>Honor Tiles</strong> (4 Angin & 3 Naga), serta <strong>8 Bunga & Musim</strong>.</div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> LATIHAN: IDENTIFIKASI NAGA</div>
+            <div class="tutorial-task-desc">Pilih semua Honor Tiles jenis Naga (Merah, Hijau, Putih) dari pilihan berikut:</div>
+            <div class="tutorial-tiles-wrap" id="tutTilesContainer">${tilesHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 2) {
+        const tiles = [3, 4, 5, 10, 10, 10, 28, 29];
+        const tilesHtml = tiles.map((t, idx) =>
+          renderTutorialTileBtn(t, this.selectedTiles.includes(idx), idx)
+        ).join('');
+        const titleDesc = this.substep === 0
+          ? 'LATIHAN BAGIAN 1: BENTUK CHI'
+          : 'LATIHAN BAGIAN 2: BENTUK PON';
+        const taskDesc = this.substep === 0
+          ? 'Pilih 3 tiles yang membentuk Chi (angka berurutan dalam satu suit):'
+          : 'Bagus! Sekarang pilih 3 tiles yang membentuk Pon (kembar tiga identik):';
+        let fbClass = 'neutral';
+        let fbText = this.substep === 0
+          ? 'Pilih 3 tiles berurutan (misal 4-5-6 Wan).'
+          : 'Pilih 3 tiles kembar tiga identik.';
+        if (this.lastHint) {
+          fbClass = 'hint';
+          fbText = this.lastHint;
+        }
+        if (this.validated) {
+          fbClass = 'success';
+          fbText = 'Luar biasa! 2-2-2 Pin adalah Pon. Ingat: Honor Tiles hanya bisa di-Pon atau Kan, tidak bisa di-Chi.';
+        }
+        bodyHtml += `
+          <div class="tutorial-desc">Meld adalah kelompok tile di hand-mu: <strong>Chi</strong> = 3 angka berurutan sejenis (hanya Number Tiles). <strong>Pon</strong> = 3 tiles kembar identik. <strong>Kan</strong> = 4 tiles kembar identik. Honor Tiles tidak bisa di-Chi.</div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> ${titleDesc}</div>
+            <div class="tutorial-task-desc">${taskDesc}</div>
+            <div class="tutorial-tiles-wrap" id="tutTilesContainer">${tilesHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 3) {
+        const tiles = [34, 35, 36, 37, 39];
+        const tilesHtml = tiles.map((t, idx) =>
+          renderTutorialTileBtn(t, this.selectedTiles.includes(idx), idx)
+        ).join('');
+        let fbClass = 'neutral';
+        let fbText = 'Pilih bunga yang memberi bonus Fan untuk Kursi Barat (3).';
+        if (this.lastHint) {
+          fbClass = 'hint';
+          fbText = this.lastHint;
+        }
+        if (this.validated) {
+          fbClass = 'success';
+          fbText = 'Benar sekali! Bunga no 3 (Chrysanthemum) cocok dengan Kursi Barat (3), memberimu bonus +1 Fan saat menang!';
+        }
+        bodyHtml += `
+          <div class="tutorial-desc">8 Bunga & Musim bukan bagian dari 14 hand tiles. Saat di-draw, bunga otomatis dibuka di meja dan kamu mengambil tile pengganti dari Wall. Jika nomor bunga cocok dengan kursimu, dapat <strong>bonus +1 Fan</strong>.</div>
+          <table class="tutorial-info-table">
+            <tr><td>Kursi 1 (Timur)</td><td>Bunga Plum (1) & Musim Semi (1)</td></tr>
+            <tr><td>Kursi 2 (Selatan)</td><td>Bunga Orchid (2) & Musim Panas (2)</td></tr>
+            <tr><td>Kursi 3 (Barat)</td><td>Bunga Chrysanthemum (3) & Musim Gugur (3)</td></tr>
+            <tr><td>Kursi 4 (Utara)</td><td>Bunga Bamboo (4) & Musim Dingin (4)</td></tr>
+          </table>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> LATIHAN: COCOKKAN BUNGA KURSI</div>
+            <div class="tutorial-task-desc">Skenario: Kamu duduk di <strong>Kursi Barat (Nomor 3)</strong>. Klik tile bunga yang memberikanmu bonus +1 Fan!</div>
+            <div class="tutorial-tiles-wrap" id="tutTilesContainer">${tilesHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 4) {
+        let baseHand = [0, 1, 2, 9, 10, 11, 18, 19, 20, 27, 27, 31, 31];
+        if (this.substep >= 1 && !this.validated) {
+          baseHand.push(8); // 9 Wan
+        }
+        const tilesHtml = baseHand.map((t, idx) =>
+          renderTutorialTileBtn(t, this.selectedTiles.includes(idx), idx)
+        ).join('');
+        const taskDesc = this.substep === 0
+          ? 'Hand-mu berisi 13 tiles. Tekan tombol "Draw Tile" untuk mengambil 1 tile dari Wall:'
+          : (this.validated
+              ? 'Hand kembali rapi menjadi 13 tiles setelah discard.'
+              : 'Hand kini 14 tiles! Tile 9 Wan masuk sendirian tanpa teman. Klik tile 9 Wan (paling kanan) lalu tekan "Discard Tile":');
+        const actionBtnHtml = this.substep === 0
+          ? '<button type="button" id="tutDrawBtn" class="primary-action small-btn">Draw Tile (Ambil)</button>'
+          : (!this.validated
+              ? `<button type="button" id="tutDiscardBtn" class="primary-action small-btn" ${this.selectedTiles.includes(13) ? '' : 'disabled'}>Discard Tile (Buang)</button>`
+              : '');
+        let fbClass = 'neutral';
+        let fbText = this.substep === 0
+          ? 'Mulai giliran dengan Draw Tile dari Wall.'
+          : (this.validated
+              ? 'Bagus! Tile 9 Wan dibuang ke Pond dan hand kembali ke 13 tiles siap menunggu giliran berikutnya.'
+              : 'Pilih tile 9 Wan untuk di-discard.');
+        if (this.validated) fbClass = 'success';
+        bodyHtml += `
+          <div class="tutorial-desc">Setiap giliran, urutan langkahmu: <strong>Draw 1 tile dari Wall</strong> (hand jadi 14 tiles) -> Cek kombinasi menang -> <strong>Discard 1 tile</strong> yang tidak terpakai ke Pond. Giliran berputar searah jarum jam.</div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> LATIHAN: DRAW DAN DISCARD</div>
+            <div class="tutorial-task-desc">${taskDesc}</div>
+            <div class="tutorial-tiles-wrap" id="tutTilesContainer">${tilesHtml}</div>
+            <div class="tutorial-action-row">${actionBtnHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 5) {
+        const discardTile = 13; // 5 Pin
+        const handTiles = [11, 12, 31, 31]; // 3 Pin, 4 Pin, Naga Merah, Naga Merah
+        const handHtml = handTiles.map((t, idx) => renderTutorialTileBtn(t, false, idx)).join('');
+        const discardHtml = renderTutorialTileBtn(discardTile, false, 99);
+        let fbClass = 'neutral';
+        let fbText = 'Pilih aksi klaim yang tepat.';
+        if (this.lastHint) {
+          fbClass = 'hint';
+          fbText = this.lastHint;
+        }
+        if (this.validated) {
+          fbClass = 'success';
+          fbText = 'Mantap! 3-4 Pin di hand bergabung dengan 5 Pin dari pemain kiri membentuk Meld Chi (3-4-5 Pin) terbuka di meja.';
+        }
+        bodyHtml += `
+          <div class="tutorial-desc">Saat lawan membuang tile, kamu bisa klaim: <strong>Chi</strong> hanya dari pemain tepat di sebelah kirimu. <strong>Pon, Kan, dan Ron</strong> bisa dari siapa saja. Setelah klaim, kamu langsung discard 1 tile tanpa draw dari Wall.</div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> LATIHAN: KLAIM DISCARD LAWAN</div>
+            <div class="tutorial-task-desc">Pemain sebelah kirimu membuang tile:</div>
+            <div class="tutorial-tiles-wrap">${discardHtml}</div>
+            <div class="tutorial-task-desc" style="margin-top:8px;">Tiles di hand kamu:</div>
+            <div class="tutorial-tiles-wrap">${handHtml}</div>
+            <div class="tutorial-action-row">
+              <button type="button" id="tutChiBtn" class="primary-action small-btn">Chi (3-4-5 Pin)</button>
+              <button type="button" id="tutPonBtn" class="outline-small">Pon</button>
+              <button type="button" id="tutPassBtn" class="text-button small-btn">Lewati (Pass)</button>
+            </div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 6) {
+        const hand = [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 5, 5];
+        const handHtml = hand.map((t, idx) => renderTutorialTileBtn(t, false, idx)).join('');
+        const opts = [
+          { key: 'A', text: 'Ping Hu (1 Fan)' },
+          { key: 'B', text: 'Hun Yi Se (3 Fan)' },
+          { key: 'C', text: 'Qing Yi Se (Murni Satu Jenis - 7 Fan)' },
+          { key: 'D', text: 'Dui Dui Hu (3 Fan)' }
+        ];
+        const optsHtml = opts.map(opt => {
+          let cls = '';
+          if (this.quizSelected === opt.key) {
+            cls = (opt.key === 'C') ? 'correct' : 'wrong';
+          }
+          return `<button type="button" class="tutorial-quiz-opt ${cls}" data-key="${opt.key}"><span class="tutorial-quiz-letter">${opt.key}</span> <span>${opt.text}</span></button>`;
+        }).join('');
+        let fbClass = 'neutral';
+        let fbText = 'Pilih salah satu jawaban kuis di atas.';
+        if (this.lastHint) {
+          fbClass = 'hint';
+          fbText = this.lastHint;
+        }
+        if (this.validated) {
+          fbClass = 'success';
+          fbText = 'Tepat sekali! Qing Yi Se bernilai 7 Fan (jackpot) karena seluruh 14 tiles murni dari satu suit tanpa campuran apapun.';
+        }
+        bodyHtml += `
+          <div class="tutorial-desc"><strong>Ron</strong> = Menang dari discard lawan mana saja. <strong>Tsumo</strong> = Menang dari draw sendiri. Nilai kemenangan dihitung dengan <strong>Fan</strong>. Semakin sulit susunannya, semakin tinggi Fan yang didapat.</div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> KUIS FAN: QING YI SE</div>
+            <div class="tutorial-task-desc">Hand kemenangan di bawah seluruhnya murni terdiri dari satu jenis Karakter (Wan):</div>
+            <div class="tutorial-tiles-wrap">${handHtml}</div>
+            <div class="tutorial-task-desc" style="margin-top:8px;">Kombinasi Fan spesial apa yang dicapai pada hand ini?</div>
+            <div class="tutorial-quiz-list" id="tutQuizList">${optsHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      } else if (this.step === 7) {
+        const opts = [
+          { key: 'A', text: '80 pts' },
+          { key: 'B', text: '160 pts' },
+          { key: 'C', text: '320 pts (2x Base Points)' },
+          { key: 'D', text: '480 pts' }
+        ];
+        const optsHtml = opts.map(opt => {
+          let cls = '';
+          if (this.quizSelected === opt.key) {
+            cls = (opt.key === 'C') ? 'correct' : 'wrong';
+          }
+          return `<button type="button" class="tutorial-quiz-opt ${cls}" data-key="${opt.key}"><span class="tutorial-quiz-letter">${opt.key}</span> <span>${opt.text}</span></button>`;
+        }).join('');
+        let fbClass = 'neutral';
+        let fbText = 'Pilih salah satu jawaban perhitungan poin di atas.';
+        if (this.lastHint) {
+          fbClass = 'hint';
+          fbText = this.lastHint;
+        }
+        if (this.validated) {
+          fbClass = 'success';
+          fbText = 'Tepat sekali! 2 x 160 pts = 320 pts dibayar penuh oleh Shooter ke pemenang. Selamat, kamu telah menguasai dasar Mahjong Jakarta Lounge!';
+        }
+        bodyHtml += `
+          <div class="tutorial-desc">Setiap pemain mulai dengan 10.000 pts. Total Fan dikonversi ke Base Points (1 Fan = 40, 2 Fan = 80, 3 Fan = 160, 4 Fan = 320, 5 Fan = 480). Di lounge Jakarta berlaku aturan Shooter: <strong>pemain yang membuang tile kemenangan (Ron) membayar 2x Base Points sendirian ke pemenang!</strong></div>
+          <div class="tutorial-practice-card">
+            <div class="tutorial-task-title"><span>✦</span> KUIS ATURAN SHOOTER</div>
+            <div class="tutorial-task-desc">Skenario: Kamu menang Ron dengan 3 Fan (Base Point = 160 pts). Berapa poin yang harus dibayar oleh Shooter yang membuang tile kemenanganmu?</div>
+            <div class="tutorial-quiz-list" id="tutQuizList">${optsHtml}</div>
+            <div id="tutFeedback" class="tutorial-feedback ${fbClass}">${fbText}</div>
+          </div>
+        `;
+      }
+
+      const actions = [];
+      if (this.step < 7) {
+        if (this.step > 0) {
+          actions.push({ text: 'Kembali', run: () => this.prev() });
+        }
+        actions.push({ text: 'Lewati', run: () => this.skip() });
+        actions.push({
+          text: 'Lanjut ➔',
+          primary: true,
+          disabled: !this.validated,
+          run: () => this.next()
+        });
+      } else {
+        actions.push({ text: '↻ Ulangi Tutorial', run: () => this.start(0) });
+        actions.push({
+          text: '▶ Main Sekarang',
+          primary: true,
+          disabled: !this.validated,
+          run: () => this.complete()
+        });
+      }
+
+      showModal({
+        icon: stepIcons[this.step],
+        kicker: stepKickers[this.step],
+        title: stepTitles[this.step],
+        body: bodyHtml,
+        actions
+      });
+
+      this.bindEvents();
+    },
+
+    bindEvents() {
+      const container = $('tutTilesContainer');
+      if (container) {
+        container.querySelectorAll('.tutorial-tile-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.idx, 10);
+            this.handleTileClick(idx);
+          });
+        });
+      }
+
+      const quizList = $('tutQuizList');
+      if (quizList) {
+        quizList.querySelectorAll('.tutorial-quiz-opt').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const key = btn.dataset.key;
+            this.handleQuizClick(key);
+          });
+        });
+      }
+
+      $('tutDrawBtn')?.addEventListener('click', () => {
+        this.substep = 1;
+        this.selectedTiles = [];
+        this.render();
+      });
+
+      $('tutDiscardBtn')?.addEventListener('click', () => {
+        if (this.selectedTiles.includes(13)) {
+          this.validated = true;
+          this.selectedTiles = [];
+          this.render();
+        }
+      });
+
+      $('tutChiBtn')?.addEventListener('click', () => {
+        this.validated = true;
+        this.lastHint = null;
+        this.render();
+      });
+
+      $('tutPonBtn')?.addEventListener('click', () => {
+        this.lastHint = 'Kamu tidak memiliki sepasang 5 Pin di hand untuk melakukan Pon.';
+        this.render();
+      });
+
+      $('tutPassBtn')?.addEventListener('click', () => {
+        this.lastHint = 'Bisa dilewati, tapi di sini kamu punya kesempatan emas untuk Chi (3-4-5 Pin).';
+        this.render();
+      });
+    },
+
+    handleTileClick(idx) {
+      if (this.step === 0) {
+        const pos = this.selectedTiles.indexOf(idx);
+        if (pos > -1) {
+          this.selectedTiles.splice(pos, 1);
+        } else if (this.selectedTiles.length < 2) {
+          this.selectedTiles.push(idx);
+        }
+        this.validated = (this.selectedTiles.length === 2 && this.selectedTiles.includes(12) && this.selectedTiles.includes(13));
+        this.render();
+      } else if (this.step === 1) {
+        const pos = this.selectedTiles.indexOf(idx);
+        if (pos > -1) {
+          this.selectedTiles.splice(pos, 1);
+          this.lastHint = null;
+        } else {
+          this.selectedTiles.push(idx);
+          if ([0, 2, 4].includes(idx)) {
+            this.lastHint = 'Itu Number Tile (angka), bukan Naga.';
+          } else if (idx === 6) {
+            this.lastHint = 'Itu Honor Tile jenis Angin, bukan Naga.';
+          } else {
+            this.lastHint = null;
+          }
+        }
+        const dragons = [1, 3, 5];
+        const hasAllDragons = dragons.every(d => this.selectedTiles.includes(d));
+        const hasNoOthers = this.selectedTiles.every(d => dragons.includes(d));
+        this.validated = (hasAllDragons && hasNoOthers);
+        this.render();
+      } else if (this.step === 2) {
+        const pos = this.selectedTiles.indexOf(idx);
+        if (pos > -1) {
+          this.selectedTiles.splice(pos, 1);
+        } else if (this.selectedTiles.length < 3) {
+          this.selectedTiles.push(idx);
+        }
+        if (this.substep === 0) {
+          if (this.selectedTiles.length === 3) {
+            const isChi = [0, 1, 2].every(i => this.selectedTiles.includes(i));
+            if (isChi) {
+              this.substep = 1;
+              this.selectedTiles = [];
+              this.lastHint = null;
+            } else {
+              this.lastHint = 'Chi harus berupa 3 angka berurutan sejenis (misal 4-5-6 Wan).';
+            }
+          } else {
+            this.lastHint = null;
+          }
+        } else if (this.substep === 1) {
+          if (this.selectedTiles.length === 3) {
+            const isPon = [3, 4, 5].every(i => this.selectedTiles.includes(i));
+            if (isPon) {
+              this.validated = true;
+              this.lastHint = null;
+            } else {
+              this.lastHint = 'Pon harus berupa 3 tile kembar identik (misal 2-2-2 Pin).';
+            }
+          } else {
+            this.lastHint = null;
+          }
+        }
+        this.render();
+      } else if (this.step === 3) {
+        this.selectedTiles = [idx];
+        if (idx === 2) {
+          this.validated = true;
+          this.lastHint = null;
+        } else {
+          this.validated = false;
+          this.lastHint = 'Bunga nomor itu cocok untuk kursi lain. Ingat: Kursi Barat adalah nomor 3 (Chrysanthemum / Autumn).';
+        }
+        this.render();
+      } else if (this.step === 4) {
+        if (this.substep === 1 && !this.validated) {
+          if (idx === 13) {
+            const pos = this.selectedTiles.indexOf(13);
+            if (pos > -1) this.selectedTiles.splice(pos, 1);
+            else this.selectedTiles.push(13);
+            this.render();
+          }
+        }
+      }
+    },
+
+    handleQuizClick(key) {
+      this.quizSelected = key;
+      if (this.step === 6) {
+        if (key === 'C') {
+          this.validated = true;
+          this.lastHint = null;
+        } else {
+          this.validated = false;
+          if (key === 'A') this.lastHint = 'Ping Hu hanya bernilai 1 Fan dan tidak memperhitungkan kemurnian satu suit.';
+          else if (key === 'B') this.lastHint = 'Hun Yi Se mengharuskan campuran antara satu suit angka DAN Honor Tiles (Angin/Naga).';
+          else if (key === 'D') this.lastHint = 'Dui Dui Hu adalah hand yang semua kelompoknya berupa Pon kembar tiga.';
+        }
+        this.render();
+      } else if (this.step === 7) {
+        if (key === 'C') {
+          this.validated = true;
+          this.lastHint = null;
+        } else {
+          this.validated = false;
+          this.lastHint = 'Ingat aturan Shooter: pemain yang membuang tile kemenangan membayar 2x Base Points (2 x 160 pts) sendirian!';
+        }
+        this.render();
+      }
+    }
+  };
 
   function confirmNewGame() {
     if (!state.active) { startNewGame(); return; }
@@ -1126,13 +1707,42 @@
     $('onlineBar').hidden = true;
     startNewGame();
   });
+  $('startTutorialBannerBtn')?.addEventListener('click', startTutorialSafe);
+  $('dismissTutorialBannerBtn')?.addEventListener('click', () => {
+    localStorage.setItem('mahjong-tutorial-dismissed', 'true');
+    const banner = $('tutorialBanner');
+    if (banner) banner.hidden = true;
+  });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeModal();
+    if (event.key === 'Escape') {
+      if (TutorialManager.isActive()) {
+        if (confirm('Keluar dari latihan tutorial?')) {
+          TutorialManager.stop();
+          closeModal();
+        }
+        return;
+      }
+      closeModal();
+    }
     if (!$('overlay').hidden || !state.active) return;
     if (event.key.toLowerCase() === 'd' && state.phase === 'draw' && state.current === 0) playerDraw();
     if (event.key === 'Enter' && state.phase === 'discard' && state.selected !== null) playerDiscard();
   });
+
+  function checkTutorialPrompt() {
+    try {
+      const completed = localStorage.getItem('mahjong-tutorial-completed');
+      const dismissed = localStorage.getItem('mahjong-tutorial-dismissed');
+      const banner = $('tutorialBanner');
+      if (!banner) return;
+      banner.hidden = !!(completed || dismissed);
+    } catch {
+      // In case localStorage is blocked in iframe/sandbox
+    }
+  }
+
   startNewGame();
+  checkTutorialPrompt();
   initSocket();
 })();

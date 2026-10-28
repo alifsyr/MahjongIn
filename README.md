@@ -1,4 +1,4 @@
-# MahjongIn — Jakarta Mahjong Club (144 Ubin)
+# MahjongIn - Jakarta Mahjong Club (144 Ubin)
 
 Game Mahjong 4 pemain yang berjalan langsung di browser, dengan **1 pemain manusia dan 3 bot**. Mengadopsi aturan **Hong Kong Mahjong 144 Ubin** seperti yang sedang viral dimainkan di kafe & lounge Mahjong Jakarta (PIK, Senopati, Kelapa Gading, Permata Hijau). Proyek ini dibangun dengan HTML, CSS, dan JavaScript murni tanpa dependensi build.
 
