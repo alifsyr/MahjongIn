@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/rules.test.mjs && node tests/tutorial.test.mjs && node tests/multiplayer.test.mjs",
+    "test": "node tests/rules.test.mjs && node tests/tutorial.test.mjs && node tests/multiplayer.test.mjs && node tests/menu.test.mjs",
     "bundle": "node scripts/bundle.mjs",
     "bundle:check": "node scripts/bundle.mjs --check"
   }

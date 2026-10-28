@@ -1919,7 +1919,7 @@
         }
         addLog(`Masuk meja online #${roomCode} sebagai kursi ${WINDS[seat]}.`);
         closeModal();
-        renderOnlineBar();
+        showGameView('online');
       });
 
       socket.on('game:state', (serverState) => {
@@ -1946,11 +1946,84 @@
     }
   }
 
+  function showMenuView() {
+    const menuView = $('menuView');
+    const gameView = $('gameView');
+    const backBtn = $('backToMenuBtn');
+    if (menuView) menuView.hidden = false;
+    if (gameView) gameView.hidden = true;
+    if (backBtn) backBtn.hidden = true;
+
+    try {
+      const rawSession = localStorage.getItem('mahjongin_session');
+      const bannerWrap = $('reconnectBannerWrap');
+      const roomText = $('reconnectRoomText');
+      if (rawSession && bannerWrap && roomText) {
+        const saved = JSON.parse(rawSession);
+        if (saved?.roomCode && saved?.sessionToken) {
+          roomText.textContent = `#${saved.roomCode}`;
+          bannerWrap.hidden = false;
+        } else {
+          bannerWrap.hidden = true;
+        }
+      } else if (bannerWrap) {
+        bannerWrap.hidden = true;
+      }
+    } catch (_) {}
+
+    const nameInput = $('menuPlayerNameInput');
+    if (nameInput) {
+      nameInput.value = localStorage.getItem('mahjong-player-name') || 'Kamu';
+    }
+  }
+
+  function showGameView(mode = 'solo') {
+    const menuView = $('menuView');
+    const gameView = $('gameView');
+    const backBtn = $('backToMenuBtn');
+    if (menuView) menuView.hidden = true;
+    if (gameView) gameView.hidden = false;
+    if (backBtn) backBtn.hidden = false;
+
+    const badge = $('gameModeBadge');
+    if (mode === 'solo') {
+      if (badge) badge.textContent = 'MEJA SOLO · VS 3 BOT';
+      if ($('onlineBar')) $('onlineBar').hidden = true;
+      startNewGame();
+    } else if (mode === 'online') {
+      if (badge) badge.textContent = `ONLINE · MEJA #${onlineSession?.roomCode || ''}`;
+      renderOnlineBar();
+      render();
+    } else if (mode === 'tutorial') {
+      if (badge) badge.textContent = 'LATIHAN TUTORIAL (8 LANGKAH)';
+      TutorialManager.start();
+    }
+  }
+
+  function handleBackToMenu() {
+    if (TutorialManager.isActive()) {
+      if (confirm('Keluar dari latihan tutorial dan kembali ke menu utama?')) {
+        TutorialManager.stop();
+        closeModal();
+        showMenuView();
+      }
+      return;
+    }
+    if (onlineSession) {
+      if (confirm('Keluar dari meja online dan kembali ke menu utama?')) {
+        leaveOnlineRoom();
+        showMenuView();
+      }
+      return;
+    }
+    showMenuView();
+  }
+
   $('rulesTop').addEventListener('click', showRules);
-  $('rulesSide').addEventListener('click', showRules);
-  $('newGame').addEventListener('click', confirmNewGame);
-  $('modalClose').addEventListener('click', closeModal);
-  $('overlay').addEventListener('click', (event) => { if (event.target === $('overlay')) closeModal(); });
+  $('rulesSide')?.addEventListener('click', showRules);
+  $('newGame')?.addEventListener('click', confirmNewGame);
+  $('modalClose')?.addEventListener('click', closeModal);
+  $('overlay')?.addEventListener('click', (event) => { if (event.target === $('overlay')) closeModal(); });
   $('onlineBtn')?.addEventListener('click', showOnlineLobby);
   $('copyRoomBtn')?.addEventListener('click', () => {
     if (onlineSession) {
@@ -1962,13 +2035,54 @@
   $('startOnlineGameBtn')?.addEventListener('click', () => socket?.emit('game:start'));
   $('leaveRoomBtn')?.addEventListener('click', () => {
     leaveOnlineRoom();
-    startNewGame();
+    showMenuView();
   });
   $('startTutorialBannerBtn')?.addEventListener('click', startTutorialSafe);
   $('dismissTutorialBannerBtn')?.addEventListener('click', () => {
     localStorage.setItem('mahjong-tutorial-dismissed', 'true');
     const banner = $('tutorialBanner');
     if (banner) banner.hidden = true;
+  });
+
+  $('startSoloGameBtn')?.addEventListener('click', () => showGameView('solo'));
+  $('openOnlineLobbyBtn')?.addEventListener('click', showOnlineLobby);
+  $('startTutorialMenuBtn')?.addEventListener('click', () => showGameView('tutorial'));
+  $('openRulesMenuBtn')?.addEventListener('click', showRules);
+  $('backToMenuBtn')?.addEventListener('click', handleBackToMenu);
+  $('gameBackMenuBtn')?.addEventListener('click', handleBackToMenu);
+  $('brandLogo')?.addEventListener('click', (e) => { e.preventDefault(); handleBackToMenu(); });
+
+  $('toggleSidebarBtn')?.addEventListener('click', () => {
+    const gView = $('gameView');
+    if (gView) {
+      gView.classList.toggle('show-sidebar');
+      const isShown = gView.classList.contains('show-sidebar');
+      $('toggleSidebarBtn')?.classList.toggle('active', isShown);
+    }
+  });
+
+  $('menuPlayerNameInput')?.addEventListener('input', (e) => {
+    const name = (e.target?.value || '').trim() || 'Kamu';
+    localStorage.setItem('mahjong-player-name', name);
+  });
+
+  $('menuReconnectBtn')?.addEventListener('click', () => {
+    try {
+      const rawSession = localStorage.getItem('mahjongin_session');
+      if (rawSession) {
+        const saved = JSON.parse(rawSession);
+        if (saved?.roomCode && saved?.sessionToken) {
+          if (!socket?.connected) {
+            alert('Belum terhubung ke server online. Tunggu sebentar...');
+            return;
+          }
+          socket.emit('room:reconnect', {
+            roomCode: saved.roomCode,
+            sessionToken: saved.sessionToken
+          });
+        }
+      }
+    } catch (_) {}
   });
 
   document.addEventListener('keydown', (event) => {
@@ -1999,7 +2113,7 @@
     }
   }
 
-  startNewGame();
+  showMenuView();
   checkTutorialPrompt();
   initSocket();
 })();
