@@ -58,7 +58,7 @@
   function tileArt(t) {
     let inner = '';
     if (t < 9) {
-      inner = `<text x="18" y="20" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="17" font-weight="900" fill="#173b6c" text-anchor="middle">${WAN_CHARS[t]}</text><text x="18" y="41" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="17" font-weight="900" fill="#be2020" text-anchor="middle">萬</text>`;
+      inner = `<text x="18" y="21" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="20" font-weight="900" fill="#173b6c" text-anchor="middle">${WAN_CHARS[t]}</text><text x="18" y="42" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="20" font-weight="900" fill="#be2020" text-anchor="middle">萬</text>`;
     } else if (t === 9) {
       let petals = '';
       for (let a = 0; a < 8; a++) {
@@ -103,11 +103,11 @@
     } else if (t === 26) {
       inner = [12, 24, 36].map((y) => cStick(10, y, 3.4, 11, '#1a783d') + cStick(18, y, 3.4, 11, '#be2020') + cStick(26, y, 3.4, 11, '#1b4e8c')).join('');
     } else if (t >= 27 && t <= 30) {
-      inner = `<text x="18" y="32" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="24" font-weight="900" fill="#142c4b" text-anchor="middle">${WIND_SIGNS[t - 27]}</text>`;
+      inner = `<text x="18" y="34" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="28" font-weight="900" fill="#142c4b" text-anchor="middle">${WIND_SIGNS[t - 27]}</text>`;
     } else if (t === 31) {
-      inner = `<text x="18" y="33" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="26" font-weight="900" fill="#be2020" text-anchor="middle">中</text>`;
+      inner = `<text x="18" y="34" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="28" font-weight="900" fill="#be2020" text-anchor="middle">中</text>`;
     } else if (t === 32) {
-      inner = `<text x="18" y="33" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="24" font-weight="900" fill="#18783d" text-anchor="middle">發</text>`;
+      inner = `<text x="18" y="34" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="26" font-weight="900" fill="#18783d" text-anchor="middle">發</text>`;
     } else if (t === 33) {
       inner = `<rect x="5.5" y="7.5" width="25" height="33" rx="3.5" fill="none" stroke="#1b4e8c" stroke-width="2.4"/><rect x="9" y="11" width="18" height="26" rx="2" fill="none" stroke="#1b4e8c" stroke-width="1"/>`;
     } else if (t >= 34 && t <= 41) {
@@ -133,7 +133,7 @@
       } else if (t === 41) {
         art = `<line x1="18" y1="21" x2="18" y2="37" stroke="#0288d1" stroke-width="1.8"/><line x1="10" y1="29" x2="26" y2="29" stroke="#0288d1" stroke-width="1.8"/><line x1="12" y1="23" x2="24" y2="35" stroke="#0288d1" stroke-width="1.5"/><line x1="12" y1="35" x2="24" y2="23" stroke="#0288d1" stroke-width="1.5"/><circle cx="18" cy="29" r="2" fill="#b3e5fc"/>`;
       }
-      inner = `<rect x="3" y="4" width="7" height="9" rx="2" fill="${badgeCol}"/><text x="6.5" y="11" font-family="sans-serif" font-size="7" font-weight="900" fill="#ffffff" text-anchor="middle">${num}</text><text x="28" y="12" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="9" font-weight="900" fill="${badgeCol}" text-anchor="middle">${sign}</text>${art}`;
+      inner = `<rect x="2" y="2" width="13" height="15" rx="3" fill="${badgeCol}"/><text x="8.5" y="14" font-family="-apple-system,BlinkMacSystemFont,Inter,sans-serif" font-size="14" font-weight="900" fill="#ffffff" text-anchor="middle">${num}</text><text x="26.5" y="14.5" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="14" font-weight="900" fill="${badgeCol}" text-anchor="middle">${sign}</text>${art}`;
     }
     return `<svg viewBox="0 0 36 48" class="tile-face" aria-hidden="true">${inner}</svg>`;
   }
