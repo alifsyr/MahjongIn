@@ -6,7 +6,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const NAMES = ['Kamu', 'Hana', 'Kenji', 'Sora'];
-  const WINDS = ['Timur', 'Selatan', 'Barat', 'Utara'];
+  const WINDS = ['East', 'South', 'West', 'North'];
   const WIND_SIGNS = ['東', '南', '西', '北'];
   const NUMBER_SIGNS = '一二三四五六七八九';
   const HONORS = ['東', '南', '西', '北', '中', '發', '白'];
@@ -842,7 +842,7 @@
       const discards = state.players[seat].discards;
       const recent = discards.slice(-15);
       const html = recent.map((t, idx) => miniTile(t, idx === recent.length - 1 && state.lastDiscard?.seat === seat && state.lastDiscard?.tile === t)).join('');
-      $(`discard${seat}`).innerHTML = `<label>${WINDS[seat]} · ${discards.length} DISCARDS</label><div class="discard-tiles">${html}</div>`;
+      $(`discard${seat}`).innerHTML = `<label>${WINDS[seat]} · ${discards.length}</label><div class="discard-tiles">${html}</div>`;
     }
   }
 
@@ -856,7 +856,7 @@
       const isDrawn = state.drawn !== null && index === hand.length - 1 && state.phase === 'discard';
       btn.className = `hand-tile ${tileColor(t)} ${isDrawn ? 'drawn' : ''} ${state.selected === index ? 'selected' : ''}`;
       btn.innerHTML = tileArt(t);
-      btn.setAttribute('aria-label', `${tileName(t)}${isDrawn ? ', baru diambil' : ''}`);
+      btn.setAttribute('aria-label', `${tileName(t)}${isDrawn ? ', drawn tile' : ''}`);
       btn.setAttribute('aria-pressed', String(state.selected === index));
       btn.disabled = !state.active || state.phase !== 'discard' || state.current !== 0;
       btn.addEventListener('click', () => {
@@ -871,7 +871,7 @@
     const myFlowers = $('myFlowers');
     if (myFlowers) {
       myFlowers.hidden = !state.players[0].flowers.length;
-      myFlowers.innerHTML = `<span class="flower-badge">🌸 Flower Tiles (${state.players[0].flowers.length}):</span> ${state.players[0].flowers.map((t) => miniTile(t)).join('')}`;
+      myFlowers.innerHTML = `<span class="flower-badge">🌸 Flowers (${state.players[0].flowers.length}):</span> ${state.players[0].flowers.map((t) => miniTile(t)).join('')}`;
     }
 
     const myScore = $('myScoreDisplay');
@@ -885,10 +885,10 @@
     const active = state.active && state.current === 0 && ['draw', 'discard', 'claim'].includes(state.phase);
     $('turnIndicator').classList.toggle('active', active);
     $('turnIndicator').textContent = !state.active ? 'ROUND OVER' : state.phase === 'claim' ? 'CLAIM' : active ? 'YOUR TURN' : 'WAITING';
-    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Tekan <strong>Draw Tile</strong> untuk memulai giliran.' :
-      state.phase === 'discard' && state.current === 0 ? 'Pilih satu tile untuk di-discard. Susunan winning hand akan membuka tombol <strong>Mahjong!</strong>' :
-      state.phase === 'claim' ? 'Kesempatan untuk claim tile yang baru di-discard lawan.' :
-      !state.active ? 'Ronde telah selesai. Mulai ronde baru untuk lanjut.' : 'Menunggu giliran pemain berikutnya.';
+    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Draw a tile to begin your turn.' :
+      state.phase === 'discard' && state.current === 0 ? 'Select a tile, then click Discard.' :
+      state.phase === 'claim' ? 'Choose an action or Pass.' :
+      !state.active ? 'Round complete. Start a new round to continue.' : 'Waiting for opponent...';
   }
 
   function renderActions() {
@@ -897,7 +897,7 @@
     if (!state.active) {
       bar.append(createButton('↻ Play Again', 'primary-action', startNewGame));
     } else if (state.current === 0 && state.phase === 'draw') {
-      bar.append(createButton('✦ Draw Tile', 'primary-action', playerDraw));
+      bar.append(createButton('✦ Draw', 'primary-action', playerDraw));
     } else if (state.current === 0 && state.phase === 'discard') {
       const player = state.players[0];
       const canWinTsumo = onlineSession ? !!state.canTsumo : isWinningHand(player.hand, player.melds.length);
@@ -911,7 +911,7 @@
           }
         }));
       }
-      bar.append(createButton('Discard Tile ↗', 'primary-action', playerDiscard, state.selected === null));
+      bar.append(createButton('Discard', 'primary-action', playerDiscard, state.selected === null));
       if (onlineSession) {
         const kongTiles = Array.isArray(state.canKongTiles) ? state.canKongTiles : [];
         kongTiles.forEach((t) => {
@@ -935,19 +935,19 @@
         });
       }
     } else {
-      bar.append(createButton('Menunggu giliran…', 'soft-action', () => {}, true));
+      bar.append(createButton('Waiting...', 'soft-action', () => {}, true));
     }
     const claimBar = $('claimBar');
     claimBar.hidden = state.phase !== 'claim' || !state.pending;
     if (claimBar.hidden) { claimBar.replaceChildren(); return; }
     const { discarder, tile, options } = state.pending;
-    claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} membuang ${tileName(tile)}</strong><span>Pilih klaim atau lanjutkan giliran biasa.</span></div><div class="claim-options" id="claimOptions"></div>`;
+    claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} discards ${tileName(tile)}</strong><span>Choose a claim action or Pass.</span></div><div class="claim-options" id="claimOptions"></div>`;
     const choices = $('claimOptions');
     options.forEach((option, index) => {
-      const name = option.kind === 'ron' ? '✿ RON : Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON : Kembar 3' : 'KAN : Kembar 4';
+      const name = option.kind === 'ron' ? '✿ RON : Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON' : 'KAN';
       choices.append(createButton(name, 'claim-action', () => playerClaim(index)));
     });
-    choices.append(createButton('Lewati', 'claim-action pass', passClaim));
+    choices.append(createButton('Pass', 'claim-action pass', passClaim));
   }
 
   function render() {
