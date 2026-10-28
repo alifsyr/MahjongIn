@@ -817,7 +817,7 @@
       }).join('');
 
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
-      const flowers = player.flowers.length ? `<div class="opp-flowers" title="Bunga & Musim: ${player.flowers.length} ubin"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
+      const flowers = player.flowers.length ? `<div class="opp-flowers" title="Flower Tiles: ${player.flowers.length}"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
       const dcTag = isDc ? '<span class="opp-dc-tag">(Terputus...)</span>' : '';
 
       container.innerHTML = `
@@ -825,11 +825,11 @@
           <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
           <div class="opp-info">
             <div class="opp-name">${player.name}${dcTag}</div>
-            <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} ubin · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
+            <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} Tiles · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
           </div>
         </div>
         <div class="opp-rack">
-          <div class="opp-backs" title="${player.hand.length} ubin tertutup">${backs}</div>
+          <div class="opp-backs" title="${player.hand.length} Tiles (Concealed)">${backs}</div>
           ${(melds || flowers) ? `<div class="opp-exposed">${melds ? `<div class="opp-melds">${melds}</div>` : ''}${flowers}</div>` : ''}
         </div>
       `;
@@ -842,7 +842,7 @@
       const discards = state.players[seat].discards;
       const recent = discards.slice(-15);
       const html = recent.map((t, idx) => miniTile(t, idx === recent.length - 1 && state.lastDiscard?.seat === seat && state.lastDiscard?.tile === t)).join('');
-      $(`discard${seat}`).innerHTML = `<label>${WINDS[seat]} · ${discards.length} BUANGAN</label><div class="discard-tiles">${html}</div>`;
+      $(`discard${seat}`).innerHTML = `<label>${WINDS[seat]} · ${discards.length} DISCARDS</label><div class="discard-tiles">${html}</div>`;
     }
   }
 
@@ -866,12 +866,12 @@
       });
       container.appendChild(btn);
     });
-    $('handCount').textContent = `${hand.length} ubin`;
+    $('handCount').textContent = `${hand.length} Tiles`;
 
     const myFlowers = $('myFlowers');
     if (myFlowers) {
       myFlowers.hidden = !state.players[0].flowers.length;
-      myFlowers.innerHTML = `<span class="flower-badge">🌸 Ubin Bunga & Musim (${state.players[0].flowers.length}):</span> ${state.players[0].flowers.map((t) => miniTile(t)).join('')}`;
+      myFlowers.innerHTML = `<span class="flower-badge">🌸 Flower Tiles (${state.players[0].flowers.length}):</span> ${state.players[0].flowers.map((t) => miniTile(t)).join('')}`;
     }
 
     const myScore = $('myScoreDisplay');
@@ -884,20 +884,20 @@
     meldTray.innerHTML = state.players[0].melds.map((meld) => `<div class="meld-group"><span class="meld-name">${meld.kind.toUpperCase()}</span>${meld.tiles.map((t) => miniTile(t)).join('')}</div>`).join('');
     const active = state.active && state.current === 0 && ['draw', 'discard', 'claim'].includes(state.phase);
     $('turnIndicator').classList.toggle('active', active);
-    $('turnIndicator').textContent = !state.active ? 'SELESAI' : state.phase === 'claim' ? 'KLAIM UBIN' : active ? 'GILIRANMU' : 'MENUNGGU';
-    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Tekan <strong>Ambil Ubin</strong> untuk memulai giliran.' :
-      state.phase === 'discard' && state.current === 0 ? 'Pilih satu ubin untuk dibuang. Tangan lengkap akan membuka tombol <strong>Mahjong!</strong>' :
-      state.phase === 'claim' ? 'Kesempatan untuk mengambil ubin yang baru dibuang lawan.' :
-      !state.active ? 'Ronde telah berakhir. Mulai game baru untuk mencoba lagi.' : 'Tunggu giliran pemain berikutnya.';
+    $('turnIndicator').textContent = !state.active ? 'ROUND OVER' : state.phase === 'claim' ? 'CLAIM' : active ? 'YOUR TURN' : 'WAITING';
+    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Tekan <strong>Draw Tile</strong> untuk memulai giliran.' :
+      state.phase === 'discard' && state.current === 0 ? 'Pilih satu tile untuk di-discard. Susunan winning hand akan membuka tombol <strong>Mahjong!</strong>' :
+      state.phase === 'claim' ? 'Kesempatan untuk claim tile yang baru di-discard lawan.' :
+      !state.active ? 'Ronde telah selesai. Mulai ronde baru untuk lanjut.' : 'Menunggu giliran pemain berikutnya.';
   }
 
   function renderActions() {
     const bar = $('actionBar');
     bar.replaceChildren();
     if (!state.active) {
-      bar.append(createButton('↻ Main Lagi', 'primary-action', startNewGame));
+      bar.append(createButton('↻ Play Again', 'primary-action', startNewGame));
     } else if (state.current === 0 && state.phase === 'draw') {
-      bar.append(createButton('✦ Ambil Ubin', 'primary-action', playerDraw));
+      bar.append(createButton('✦ Draw Tile', 'primary-action', playerDraw));
     } else if (state.current === 0 && state.phase === 'discard') {
       const player = state.players[0];
       const canWinTsumo = onlineSession ? !!state.canTsumo : isWinningHand(player.hand, player.melds.length);
@@ -911,7 +911,7 @@
           }
         }));
       }
-      bar.append(createButton('Buang Ubin ↗', 'primary-action', playerDiscard, state.selected === null));
+      bar.append(createButton('Discard Tile ↗', 'primary-action', playerDiscard, state.selected === null));
       if (onlineSession) {
         const kongTiles = Array.isArray(state.canKongTiles) ? state.canKongTiles : [];
         kongTiles.forEach((t) => {

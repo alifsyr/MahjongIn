@@ -141,12 +141,12 @@
         </div>
         <div class="game-toolbar-right">
           <div class="game-wall-pill">
-            <span>Tembok: <strong id="wallNumber">92</strong></span>
+            <span>Wall: <strong id="wallNumber">92</strong></span>
             <span class="sep">|</span>
             <span>Dead Wall: <strong id="deadWallCount">14</strong></span>
           </div>
-          <button id="newGame" class="text-button">↻ <span>Ronde Baru</span></button>
-          <button id="toggleSidebarBtn" class="outline-small" title="Buka/Tutup Info & Riwayat">📋 <span>Info & Riwayat</span></button>
+          <button id="newGame" class="text-button">↻ <span>New Round</span></button>
+          <button id="toggleSidebarBtn" class="outline-small" title="Game Info">📋 <span>Game Info</span></button>
         </div>
       </div>
 
@@ -178,8 +178,8 @@
               <div class="center-emblem">
                 <div class="emblem-compass">東</div>
                 <strong id="centerWall">92</strong>
-                <small>UBIN TERSISA</small>
-                <span class="center-dead-wall" id="centerDeadWall" title="14 Ubin Dead Wall Cadangan">DW: 14</span>
+                <small>TILES LEFT</small>
+                <span class="center-dead-wall" id="centerDeadWall" title="14 Dead Wall Reserve Tiles">DW: 14</span>
               </div>
               <div class="discard-area discard-east" id="discard1"></div>
               <div class="discard-area discard-south" id="discard0"></div>
@@ -191,17 +191,17 @@
             <div class="hand-header">
               <div class="player-avatar">東</div>
               <div>
-                <div class="player-label">KURSI TIMUR · KAMU · <strong id="myScoreDisplay" class="score-display">10.000 pts</strong></div>
-                <strong>Tanganmu <span id="handCount">13 ubin</span></strong>
+                <div class="player-label">EAST SEAT · KAMU · <strong id="myScoreDisplay" class="score-display">10.000 pts</strong></div>
+                <strong>Hand <span id="handCount">13 Tiles</span></strong>
               </div>
-              <div class="turn-indicator" id="turnIndicator">MENUNGGU</div>
+              <div class="turn-indicator" id="turnIndicator">WAITING</div>
             </div>
             <div class="flower-tray" id="myFlowers" hidden></div>
             <div class="meld-tray" id="myMelds" hidden></div>
             <div class="hand-container">
               <div id="myHand" class="my-hand" role="group" aria-label="Ubin di tanganmu"></div>
             </div>
-            <div id="drawnNote" class="hand-help">Pilih <strong>Ambil Ubin</strong> untuk memulai giliran.</div>
+            <div id="drawnNote" class="hand-help">Tekan <strong>Draw Tile</strong> untuk memulai giliran.</div>
             <div id="actionBar" class="action-bar"></div>
             <div id="claimBar" class="claim-bar" hidden></div>
           </div>
