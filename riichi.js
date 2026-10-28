@@ -692,6 +692,22 @@
     render();
   }
 
+  function playerPromotedKan(tile) {
+    if (state.current !== 0 || state.phase !== 'discard' || !state.wall.length) return;
+    const player = state.players[0];
+    const meld = player.melds.find((m) => m.kind === 'pon' && m.tiles[0] === tile);
+    if (!meld || countsFor(player.hand)[tile] < 1) return;
+    removeTiles(player.hand, [tile]);
+    meld.kind = 'kan';
+    meld.tiles.push(tile);
+    state.drawn = null;
+    state.selected = null;
+    addLog(`Kamu melakukan Kan tambah (${tileShort(tile)}).`);
+    if (drawFromWall(0, true) === null) return;
+    setStatus('Kan tambah berhasil. Kamu mengambil ubin pengganti.');
+    render();
+  }
+
   function endRound(winner, mode, discarder = null, winningTile = null) {
     if (!state.active) return;
     state.active = false;
@@ -789,14 +805,18 @@
     for (let seat = 1; seat < 4; seat++) {
       const player = state.players[seat];
       const container = $(`bot${seat}`);
+      const isDc = !!onlineSession && player.isConnected === false;
       container.classList.toggle('current', state.current === seat && state.active);
+      container.classList.toggle('disconnected', isDc);
+      container.classList.toggle('player-disconnected', isDc);
       const backs = Array.from({ length: Math.min(9, player.hand.length) }, () => '<i class="tile-back"></i>').join('');
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
       const flowers = player.flowers.length ? `<div class="opp-flowers"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
+      const dcTag = isDc ? '<span class="opp-dc-tag">(Terputus...)</span>' : '';
       container.innerHTML = `
         <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
         <div class="opp-info">
-          <div class="opp-name">${player.name}</div>
+          <div class="opp-name">${player.name}${dcTag}</div>
           <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} ubin · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
         </div>
         <div class="opp-backs">${backs}</div>
@@ -870,14 +890,40 @@
       bar.append(createButton('✦ Ambil Ubin', 'primary-action', playerDraw));
     } else if (state.current === 0 && state.phase === 'discard') {
       const player = state.players[0];
-      if (isWinningHand(player.hand, player.melds.length))
-        bar.append(createButton('✿ MAHJONG! (Tsumo)', 'primary-action', () => endRound(0, 'Tsumo')));
+      const canWinTsumo = onlineSession ? !!state.canTsumo : isWinningHand(player.hand, player.melds.length);
+      if (canWinTsumo) {
+        bar.append(createButton('✿ MAHJONG! (Tsumo)', 'primary-action', () => {
+          if (onlineSession) {
+            setStatus('Mendeklarasikan Tsumo...');
+            socket?.emit('game:tsumo');
+          } else {
+            endRound(0, 'Tsumo');
+          }
+        }));
+      }
       bar.append(createButton('Buang Ubin ↗', 'primary-action', playerDiscard, state.selected === null));
-      const counts = countsFor(player.hand);
-      counts.forEach((n, t) => {
-        if (n >= 4 && state.wall.length)
-          bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => playerClosedKan(t)));
-      });
+      if (onlineSession) {
+        const kongTiles = Array.isArray(state.canKongTiles) ? state.canKongTiles : [];
+        kongTiles.forEach((t) => {
+          bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => {
+            setStatus('Mendeklarasikan Kan...');
+            socket?.emit('game:kong', { tile: t });
+          }));
+        });
+      } else {
+        const counts = countsFor(player.hand);
+        counts.forEach((n, t) => {
+          if (n >= 4 && state.wall.length)
+            bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => playerClosedKan(t)));
+        });
+        player.melds.forEach((m) => {
+          if (m.kind === 'pon') {
+            const t = m.tiles[0];
+            if (counts[t] >= 1 && state.wall.length)
+              bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => playerPromotedKan(t)));
+          }
+        });
+      }
     } else {
       bar.append(createButton('Menunggu giliran…', 'soft-action', () => {}, true));
     }
@@ -903,6 +949,9 @@
     const left = state.wall.length;
     $('wallNumber').textContent = left;
     $('centerWall').textContent = left;
+    const deadWall = state.deadWallCount !== undefined ? state.deadWallCount : 14;
+    if ($('deadWallCount')) $('deadWallCount').textContent = deadWall;
+    if ($('centerDeadWall')) $('centerDeadWall').textContent = `DW: ${deadWall}`;
     $('wallProgress').style.width = `${Math.min(100, (left / 92) * 100)}%`;
     $('turnCounter').textContent = `GILIRAN ${state.turn}`;
     $('eventLog').innerHTML = state.log.slice(0, 8).map((event) => `<div class="event-line"><span class="event-dot">✦</span><span>${event}</span></div>`).join('');
@@ -963,6 +1012,9 @@
 
   function leaveOnlineRoom() {
     onlineSession = null;
+    try {
+      localStorage.removeItem('mahjongin_session');
+    } catch (_) {}
     const bar = $('onlineBar');
     if (bar) bar.hidden = true;
   }
@@ -1571,6 +1623,9 @@
     state.current = s.currentTurn === s.seat ? 0 : ((s.currentTurn - s.seat + 4) % 4);
     state.turn = s.turn;
     state.wall = Array(s.wallCount).fill(0);
+    state.deadWallCount = s.deadWallCount || 14;
+    state.canTsumo = !!s.canTsumo;
+    state.canKongTiles = Array.isArray(s.canKongTiles) ? [...s.canKongTiles] : [];
     state.lastDiscard = s.lastDiscard ? {
       seat: (s.lastDiscard.seat - s.seat + 4) % 4,
       tile: s.lastDiscard.tile
@@ -1584,7 +1639,9 @@
       flowers: [...s.myFlowers],
       melds: [...s.myMelds],
       discards: state.players[0]?.discards || [],
-      score: s.myScore
+      score: s.myScore,
+      isBot: false,
+      isConnected: true
     };
 
     s.opponents.forEach((opp) => {
@@ -1596,7 +1653,9 @@
         flowers: [...opp.flowers],
         melds: [...opp.melds],
         discards: [...opp.discards],
-        score: opp.score
+        score: opp.score,
+        isBot: !!opp.isBot,
+        isConnected: opp.isConnected !== false
       };
     });
 
@@ -1605,7 +1664,7 @@
     } else if (state.current === 0 && state.phase === 'draw') {
       setStatus('Giliranmu! Tekan Ambil Ubin.');
     } else if (state.current === 0 && state.phase === 'discard') {
-      setStatus(isWinningHand(state.players[0].hand, state.players[0].melds.length) ? 'Mahjong! Tanganmu sudah lengkap.' : 'Pilih satu ubin lalu tekan Buang Ubin.');
+      setStatus((s.canTsumo || isWinningHand(state.players[0].hand, state.players[0].melds.length)) ? 'Mahjong! Tanganmu sudah lengkap.' : 'Pilih satu ubin lalu tekan Buang Ubin.');
     } else if (state.phase === 'claim' && s.pendingClaim) {
       setStatus(`Kesempatan klaim ${tileName(s.pendingClaim.tile)}!`);
     } else {
@@ -1616,23 +1675,78 @@
     renderOnlineBar();
   }
 
-  function handleServerGameOver(winnerSeat, fanSummary) {
+  function handleServerGameOver(payload, maybeFanSummary) {
     state.active = false;
     state.phase = 'over';
+
+    let winnerSeat = null;
+    let fanSummary = null;
+    let isDraw = false;
+    let isTsumo = false;
+
+    if (payload && typeof payload === 'object' && ('winner' in payload || 'isDraw' in payload)) {
+      winnerSeat = payload.winner;
+      fanSummary = payload.fanSummary;
+      isDraw = !!payload.isDraw;
+      isTsumo = !!payload.isTsumo;
+    } else {
+      winnerSeat = payload;
+      fanSummary = maybeFanSummary;
+    }
+
+    if (isDraw || winnerSeat === null || winnerSeat === undefined) {
+      addLog('Tumpukan habis. Ronde online berakhir seri (Exhaustive Draw).');
+      setStatus('Ronde seri: seluruh ubin di Live Wall telah habis.');
+      render();
+      const scoreBoardHtml = state.players.map((p) => `<div class="score-pill"><span>${WIND_SIGNS[p.seat] || '✦'} ${p.name}</span><strong>${(p.score || 0).toLocaleString('id-ID')} pts</strong></div>`).join('');
+      showModal({
+        icon: '⚐',
+        kicker: 'RONDE ONLINE SELESAI',
+        title: 'Ronde Seri (Tembok Habis)',
+        body: `
+          <div class="winner-summary">
+            <p>Seluruh ubin di Live Wall telah habis ditarik dan tidak ada pemain yang menyelesaikan tangan (Exhaustive Draw).</p>
+            <div class="score-table-label" style="margin-top:12px;">SKOR SAAT INI:</div>
+            <div class="score-pill-container">${scoreBoardHtml}</div>
+            <p class="table-disclaimer" style="margin-top:12px;">Tidak ada perolehan Fan atau transfer poin pada ronde seri.</p>
+          </div>
+        `,
+        actions: [
+          {
+            text: 'Mulai Ronde Baru',
+            primary: true,
+            run: () => {
+              closeModal();
+              socket?.emit('game:start');
+            }
+          },
+          { text: 'Tutup', run: closeModal }
+        ]
+      });
+      return;
+    }
+
     const relWinner = (winnerSeat - (onlineSession?.seat || 0) + 4) % 4;
     const winnerName = relWinner === 0 ? 'Kamu' : (NAMES[relWinner] || `Pemain ${winnerSeat}`);
+    const totalFan = fanSummary?.totalFan ?? 0;
+    const items = Array.isArray(fanSummary?.items) ? fanSummary.items : [];
+    const basePoints = fanSummary?.basePoints ?? 0;
+    const winTitle = isTsumo
+      ? (relWinner === 0 ? 'Mahjong! Tsumo (Menang Sendiri)!' : `${winnerName} Tsumo!`)
+      : (relWinner === 0 ? 'Mahjong! Kamu menang!' : `${winnerName} menang!`);
+
     showModal({
-      icon: relWinner === 0 ? '✿' : WIND_SIGNS[winnerSeat],
+      icon: relWinner === 0 ? '✿' : (WIND_SIGNS[winnerSeat] || '✦'),
       kicker: 'RONDE ONLINE SELESAI',
-      title: relWinner === 0 ? 'Mahjong! Kamu menang!' : `${winnerName} menang!`,
+      title: winTitle,
       body: `
         <div class="winner-summary">
           <p><strong>${winnerName}</strong> memenangkan ronde meja online!</p>
           <div class="fan-box">
-            <div class="fan-header"><span>RINCIAN FAN</span><strong>TOTAL: ${fanSummary.totalFan} FAN</strong></div>
-            <div class="fan-items">${fanSummary.items.map((it) => `<div class="fan-row"><span>✦ ${it.name}</span><strong>+${it.fan} Fan</strong></div>`).join('')}</div>
+            <div class="fan-header"><span>RINCIAN FAN</span><strong>TOTAL: ${totalFan} FAN</strong></div>
+            <div class="fan-items">${items.map((it) => `<div class="fan-row"><span>✦ ${it.name}</span><strong>+${it.fan} Fan</strong></div>`).join('')}</div>
           </div>
-          <div class="winner-big">${fanSummary.basePoints.toLocaleString('id-ID')} <small style="font-size:14px;font-weight:normal;">poin dasar</small></div>
+          <div class="winner-big">${basePoints.toLocaleString('id-ID')} <small style="font-size:14px;font-weight:normal;">poin dasar</small></div>
           <p class="table-disclaimer">Hasil kalkulasi resmi server online MahjongIn.</p>
         </div>
       `,
@@ -1644,13 +1758,28 @@
             closeModal();
             socket?.emit('game:start');
           }
-        }
+        },
+        { text: 'Tutup', run: closeModal }
       ]
     });
   }
 
   function showOnlineLobby() {
     const isConn = socket?.connected;
+    let savedSession = null;
+    try {
+      const raw = localStorage.getItem('mahjongin_session');
+      if (raw) savedSession = JSON.parse(raw);
+    } catch (_) {}
+
+    const reconnectCard = (savedSession && savedSession.roomCode && savedSession.sessionToken) ? `
+      <div style="margin-bottom:14px;padding:12px;background:rgba(218,165,32,0.12);border:1px solid #bca473;border-radius:10px;text-align:left;">
+        <div style="font-size:11px;color:#f5d485;font-weight:bold;letter-spacing:0.04em;">SESI SEBELUMNYA DITEMUKAN</div>
+        <p style="font-size:11px;color:#ded1b2;margin:4px 0 8px;">Tergabung di meja <strong>#${savedSession.roomCode}</strong> (Kursi ${WINDS[savedSession.seat] || 'Pemain'}).</p>
+        <button id="modalReconnectBtn" class="primary-action" style="width:100%;font-size:12px;padding:8px 14px;">↻ Sambung Ulang ke Meja #${savedSession.roomCode}</button>
+      </div>
+    ` : '';
+
     showModal({
       icon: '🌐',
       kicker: 'MULTIPLAYER ONLINE',
@@ -1661,6 +1790,8 @@
             <span class="live-dot ${isConn ? 'connected' : 'connecting'}"></span>
             <span><strong>Server:</strong> ${SERVER_URL} (${isConn ? 'Online' : 'Menghubungkan...'})</span>
           </div>
+
+          ${reconnectCard}
 
           <label style="font-size:11px;color:#ded1b2;"><strong>Nama Pemain:</strong></label>
           <input id="playerNameInput" class="lobby-input" placeholder="Masukkan namamu" value="${localStorage.getItem('mahjong-player-name') || 'Kamu'}" />
@@ -1689,6 +1820,18 @@
     });
 
     setTimeout(() => {
+      $('modalReconnectBtn')?.addEventListener('click', () => {
+        if (!savedSession?.roomCode || !savedSession?.sessionToken) return;
+        if (!socket?.connected) {
+          alert('Belum terhubung ke server online. Tunggu sebentar...');
+          return;
+        }
+        socket.emit('room:reconnect', {
+          roomCode: savedSession.roomCode,
+          sessionToken: savedSession.sessionToken
+        });
+      });
+
       $('modalCreateRoomBtn')?.addEventListener('click', () => {
         const name = ($('playerNameInput')?.value || '').trim() || 'Kamu';
         localStorage.setItem('mahjong-player-name', name);
@@ -1711,7 +1854,11 @@
           alert('Belum terhubung ke server online. Tunggu sebentar (Render cold start)...');
           return;
         }
-        socket.emit('room:join', { roomCode, name });
+        const payload = { roomCode, name };
+        if (savedSession && savedSession.roomCode === roomCode && savedSession.sessionToken) {
+          payload.sessionToken = savedSession.sessionToken;
+        }
+        socket.emit('room:join', payload);
       });
     }, 50);
   }
@@ -1738,6 +1885,20 @@
       socket.on('connect', () => {
         console.log('Berhasil terhubung ke server MahjongIn! Socket ID:', socket.id);
         updateServerStatus('connected', 'ONLINE • SIAP');
+
+        try {
+          const rawSession = localStorage.getItem('mahjongin_session');
+          if (rawSession) {
+            const saved = JSON.parse(rawSession);
+            if (saved?.roomCode && saved?.sessionToken) {
+              console.log('Mencoba reconnect otomatis ke meja:', saved.roomCode);
+              socket.emit('room:reconnect', {
+                roomCode: saved.roomCode,
+                sessionToken: saved.sessionToken
+              });
+            }
+          }
+        } catch (_) {}
       });
 
       socket.on('disconnect', () => {
@@ -1749,8 +1910,13 @@
         updateServerStatus('disconnected', 'SERVER TIDUR (SOLO)');
       });
 
-      socket.on('room:joined', ({ roomCode, seat }) => {
-        onlineSession = { roomCode, seat };
+      socket.on('room:joined', ({ roomCode, seat, sessionToken }) => {
+        onlineSession = { roomCode, seat, sessionToken };
+        if (sessionToken) {
+          try {
+            localStorage.setItem('mahjongin_session', JSON.stringify({ roomCode, seat, sessionToken }));
+          } catch (_) {}
+        }
         addLog(`Masuk meja online #${roomCode} sebagai kursi ${WINDS[seat]}.`);
         closeModal();
         renderOnlineBar();
@@ -1760,11 +1926,18 @@
         applyServerGameState(serverState);
       });
 
-      socket.on('game:over', ({ winner, fanSummary }) => {
-        handleServerGameOver(winner, fanSummary);
+      socket.on('game:over', (payload) => {
+        handleServerGameOver(payload);
       });
 
       socket.on('error', (msg) => {
+        if (typeof msg === 'string' && (msg.includes('tidak ditemukan') || msg.includes('tidak valid') || msg.includes('berakhir'))) {
+          try {
+            localStorage.removeItem('mahjongin_session');
+          } catch (_) {}
+          onlineSession = null;
+          renderOnlineBar();
+        }
         alert(msg);
       });
     } catch (err) {
@@ -1788,8 +1961,7 @@
   $('fillBotsBtn')?.addEventListener('click', () => socket?.emit('room:fill-bots'));
   $('startOnlineGameBtn')?.addEventListener('click', () => socket?.emit('game:start'));
   $('leaveRoomBtn')?.addEventListener('click', () => {
-    onlineSession = null;
-    $('onlineBar').hidden = true;
+    leaveOnlineRoom();
     startNewGame();
   });
   $('startTutorialBannerBtn')?.addEventListener('click', startTutorialSafe);

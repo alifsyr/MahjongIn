@@ -207,6 +207,11 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
 .tutorial-info-table td { padding: 6px 8px; border-bottom: 1px solid #eccf9822; }
 .tutorial-info-table tr td:first-child { color: #ebd19b; font-weight: 600; width: 38%; }
 .tutorial-info-table tr td:last-child { color: #d8e5d7; }
+.dead-wall-pill { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b7c7b7; margin: 4px 0 10px; background: rgba(0, 0, 0, 0.22); padding: 4px 10px; border-radius: 6px; border: 1px dashed #bca47355; width: fit-content; }
+.dead-wall-pill strong { color: #f5d485; }
+.center-dead-wall { font-size: 8px; font-weight: 700; color: #eedcb9; background: rgba(0, 0, 0, 0.35); border: 1px solid #bca47366; padding: 1px 5px; border-radius: 4px; margin-top: 3px; letter-spacing: .05em; }
+.bot-seat.disconnected, .opponent.disconnected, .player-disconnected { opacity: 0.72; filter: grayscale(0.2); }
+.opp-dc-tag { display: inline-block; font-size: 9px; font-weight: 700; color: #ff9e9e; background: rgba(220, 53, 69, 0.25); border: 1px solid rgba(220, 53, 69, 0.5); padding: 1px 6px; border-radius: 4px; margin-left: 6px; letter-spacing: .03em; vertical-align: middle; }
 @media(max-width:1150px) {
   .app { padding: 0 24px; }.layout { grid-template-columns: minmax(0,1fr) 245px; gap: 15px; }.info-card { padding: 16px; }.top-caption { display: none; }
   .opponent-left { left: 14px; }.opponent-right { right: 14px; }.pond { left: 15%; right: 15%; }.hand-tile { width: 45px; height: 59px; font-size: 25px; }
