@@ -44,13 +44,98 @@
     return FLOWER_SIGNS[t - 34];
   };
 
+  const WAN_CHARS = ['一', '二', '三', '四', '伍', '六', '七', '八', '九'];
+
+  const cDot = (cx, cy, r, col, inner = '#ffffff') =>
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}" stroke="#0f2b1d" stroke-width="0.5"/><circle cx="${cx}" cy="${cy}" r="${(r * 0.5).toFixed(1)}" fill="none" stroke="${inner}" stroke-width="0.75"/><circle cx="${cx}" cy="${cy}" r="${(r * 0.18).toFixed(1)}" fill="${col}"/>`;
+
+  const cStick = (cx, cy, w, h, col) => {
+    const r = (w / 2).toFixed(1);
+    const top = (cy - h / 2).toFixed(1);
+    return `<rect x="${(cx - w / 2).toFixed(1)}" y="${top}" width="${w}" height="${h}" rx="${r}" fill="${col}" stroke="#0e2a1e" stroke-width="0.5"/><line x1="${(cx - w / 2).toFixed(1)}" y1="${cy}" x2="${(cx + w / 2).toFixed(1)}" y2="${cy}" stroke="#ffffff" stroke-width="0.7"/><circle cx="${cx}" cy="${cy}" r="0.8" fill="#ffffff"/>`;
+  };
+
   function tileArt(t) {
-    if (t < 9) return `<span>${NUMBER_SIGNS[t]}</span><span class="tile-minor">萬</span>`;
-    if (t < 18) return `<span>${'①②③④⑤⑥⑦⑧⑨'[t - 9]}</span><span class="tile-minor">筒</span>`;
-    if (t < 27) return `<span>${NUMBER_SIGNS[t - 18]}</span><span class="tile-minor">索</span>`;
-    if (t < 34) return HONORS[t - 27];
-    const num = ((t - 34) % 4) + 1;
-    return `<span class="flower-no">${num}</span><span class="flower-sign">${FLOWER_SIGNS[t - 34]}</span>`;
+    let inner = '';
+    if (t < 9) {
+      inner = `<text x="18" y="20" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="17" font-weight="900" fill="#173b6c" text-anchor="middle">${WAN_CHARS[t]}</text><text x="18" y="41" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="17" font-weight="900" fill="#be2020" text-anchor="middle">萬</text>`;
+    } else if (t === 9) {
+      let petals = '';
+      for (let a = 0; a < 8; a++) {
+        const rad = (a * Math.PI) / 4;
+        const px = (18 + Math.cos(rad) * 9.5).toFixed(1);
+        const py = (24 + Math.sin(rad) * 9.5).toFixed(1);
+        petals += `<circle cx="${px}" cy="${py}" r="2.2" fill="#1a783d"/>`;
+      }
+      inner = `<circle cx="18" cy="24" r="13" fill="#be2020" stroke="#0f2b1d" stroke-width="0.8"/><circle cx="18" cy="24" r="10.5" fill="#f7f3e8" stroke="#1a783d" stroke-width="0.6"/>${petals}<circle cx="18" cy="24" r="6" fill="#1a783d"/><circle cx="18" cy="24" r="4.2" fill="#be2020"/><circle cx="18" cy="24" r="1.8" fill="#ffffff"/>`;
+    } else if (t === 10) {
+      inner = cDot(18, 14, 6.5, '#1a783d') + cDot(18, 34, 6.5, '#1b4e8c');
+    } else if (t === 11) {
+      inner = cDot(10, 12, 4.5, '#1b4e8c') + cDot(18, 24, 4.5, '#be2020') + cDot(26, 36, 4.5, '#1a783d');
+    } else if (t === 12) {
+      inner = cDot(11, 14, 4.5, '#1b4e8c') + cDot(25, 14, 4.5, '#1a783d') + cDot(11, 34, 4.5, '#1a783d') + cDot(25, 34, 4.5, '#1b4e8c');
+    } else if (t === 13) {
+      inner = cDot(10, 13, 4.2, '#1b4e8c') + cDot(26, 13, 4.2, '#1a783d') + cDot(18, 24, 5.2, '#be2020') + cDot(10, 35, 4.2, '#1a783d') + cDot(26, 35, 4.2, '#1b4e8c');
+    } else if (t === 14) {
+      inner = cDot(12, 13, 4.5, '#1a783d') + cDot(24, 13, 4.5, '#1a783d') + cDot(12, 27, 4.2, '#be2020') + cDot(24, 27, 4.2, '#be2020') + cDot(12, 38, 4.2, '#be2020') + cDot(24, 38, 4.2, '#be2020');
+    } else if (t === 15) {
+      inner = cDot(10, 10, 3.8, '#1a783d') + cDot(18, 15, 3.8, '#1a783d') + cDot(26, 20, 3.8, '#1a783d') + cDot(12, 30, 4.2, '#be2020') + cDot(24, 30, 4.2, '#be2020') + cDot(12, 40, 4.2, '#be2020') + cDot(24, 40, 4.2, '#be2020');
+    } else if (t === 16) {
+      inner = [9, 19, 29, 39].map((y) => cDot(12, y, 3.8, '#1b4e8c') + cDot(24, y, 3.8, '#1b4e8c')).join('');
+    } else if (t === 17) {
+      inner = [11, 24, 37].map((y) => cDot(9, y, 3.8, '#1a783d') + cDot(18, y, 3.8, '#be2020') + cDot(27, y, 3.8, '#1b4e8c')).join('');
+    } else if (t === 18) {
+      inner = `<path d="M 6 39 Q 18 36 30 39" stroke="#1a783d" stroke-width="3" stroke-linecap="round"/><circle cx="18" cy="37.5" r="1.5" fill="#f7f3e8"/><path d="M 17 12 Q 15 6 12 7 M 18 11 Q 19 5 18 5 M 19 12 Q 23 6 24 8" stroke="#be2020" stroke-width="1.2" stroke-linecap="round" fill="none"/><path d="M 13 28 Q 7 35 11 43 Q 14 36 16 30" fill="#1a783d"/><circle cx="10.5" cy="39" r="1.5" fill="#be2020"/><path d="M 13 22 Q 13 14 18 14 Q 22 14 22 20 Q 23 27 18 30 Q 14 30 13 22 Z" fill="#1a783d"/><path d="M 16 19 Q 21 17 21 24 Q 21 28 17 29 Z" fill="#be2020"/><circle cx="20.5" cy="16.5" r="1.2" fill="#111"/><polygon points="22.5,15.5 27,17 22.5,18.5" fill="#d88b14"/>`;
+    } else if (t === 19) {
+      inner = cStick(18, 15, 4, 15, '#1a783d') + cStick(18, 33, 4, 15, '#1b4e8c');
+    } else if (t === 20) {
+      inner = cStick(18, 14, 4, 14, '#1b4e8c') + cStick(12, 33, 4, 14, '#1a783d') + cStick(24, 33, 4, 14, '#1a783d');
+    } else if (t === 21) {
+      inner = cStick(12, 16, 3.6, 14, '#1a783d') + cStick(12, 32, 3.6, 14, '#1b4e8c') + cStick(24, 16, 3.6, 14, '#1b4e8c') + cStick(24, 32, 3.6, 14, '#1a783d');
+    } else if (t === 22) {
+      inner = cStick(11, 15, 3.4, 13, '#1a783d') + cStick(25, 15, 3.4, 13, '#1b4e8c') + cStick(18, 24, 4, 16, '#be2020') + cStick(11, 33, 3.4, 13, '#1b4e8c') + cStick(25, 33, 3.4, 13, '#1a783d');
+    } else if (t === 23) {
+      inner = [10, 18, 26].map((x) => cStick(x, 15, 3.4, 13, '#1a783d')).join('') + [10, 18, 26].map((x) => cStick(x, 33, 3.4, 13, '#1b4e8c')).join('');
+    } else if (t === 24) {
+      inner = cStick(18, 13, 4, 13, '#be2020') + [10, 18, 26].map((x) => cStick(x, 26, 3.4, 11, x === 18 ? '#1b4e8c' : '#1a783d')).join('') + [10, 18, 26].map((x) => cStick(x, 38, 3.4, 11, x === 18 ? '#1a783d' : '#1b4e8c')).join('');
+    } else if (t === 25) {
+      inner = [9, 15, 21, 27].map((x, i) => cStick(x, 15, 3.4, 13, i % 2 ? '#1b4e8c' : '#1a783d')).join('') + [9, 15, 21, 27].map((x, i) => cStick(x, 33, 3.4, 13, i % 2 ? '#1a783d' : '#1b4e8c')).join('');
+    } else if (t === 26) {
+      inner = [12, 24, 36].map((y) => cStick(10, y, 3.4, 11, '#1a783d') + cStick(18, y, 3.4, 11, '#be2020') + cStick(26, y, 3.4, 11, '#1b4e8c')).join('');
+    } else if (t >= 27 && t <= 30) {
+      inner = `<text x="18" y="32" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="24" font-weight="900" fill="#142c4b" text-anchor="middle">${WIND_SIGNS[t - 27]}</text>`;
+    } else if (t === 31) {
+      inner = `<text x="18" y="33" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="26" font-weight="900" fill="#be2020" text-anchor="middle">中</text>`;
+    } else if (t === 32) {
+      inner = `<text x="18" y="33" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="24" font-weight="900" fill="#18783d" text-anchor="middle">發</text>`;
+    } else if (t === 33) {
+      inner = `<rect x="5.5" y="7.5" width="25" height="33" rx="3.5" fill="none" stroke="#1b4e8c" stroke-width="2.4"/><rect x="9" y="11" width="18" height="26" rx="2" fill="none" stroke="#1b4e8c" stroke-width="1"/>`;
+    } else if (t >= 34 && t <= 41) {
+      const num = ((t - 34) % 4) + 1;
+      const sign = FLOWER_SIGNS[t - 34];
+      const isSeason = t >= 38;
+      const badgeCol = isSeason ? '#1b4e8c' : '#be2020';
+      let art = '';
+      if (t === 34) {
+        art = `<circle cx="18" cy="29" r="6" fill="#be2020"/><circle cx="14" cy="25" r="4.5" fill="#d93b3b"/><circle cx="22" cy="25" r="4.5" fill="#d93b3b"/><circle cx="18" cy="29" r="2.2" fill="#ffd54f"/>`;
+      } else if (t === 35) {
+        art = `<path d="M 18 38 Q 17 28 20 22 M 18 34 Q 13 30 11 25" stroke="#1a783d" stroke-width="1.5" fill="none"/><ellipse cx="20" cy="22" rx="4.5" ry="3.5" fill="#8e24aa"/><circle cx="20" cy="22" r="1.5" fill="#ffca28"/>`;
+      } else if (t === 36) {
+        art = `<circle cx="18" cy="28" r="7.5" fill="#f57f17"/><circle cx="18" cy="28" r="5" fill="#fbc02d"/><circle cx="18" cy="28" r="2.5" fill="#fff9c4"/>`;
+      } else if (t === 37) {
+        art = `<line x1="16" y1="39" x2="16" y2="19" stroke="#1a783d" stroke-width="2.5"/><line x1="20" y1="39" x2="20" y2="23" stroke="#2e7d32" stroke-width="2"/><path d="M 16 26 Q 10 23 8 20 M 16 31 Q 23 27 25 24" stroke="#1a783d" stroke-width="1.5" fill="none"/>`;
+      } else if (t === 38) {
+        art = `<circle cx="18" cy="25" r="6.5" fill="#fbc02d"/><path d="M 18 39 Q 18 31 16 28 M 18 35 Q 23 32 25 30" stroke="#1a783d" stroke-width="1.8" fill="none"/>`;
+      } else if (t === 39) {
+        art = `<ellipse cx="18" cy="35" rx="9" ry="3" fill="#2e7d32"/><ellipse cx="18" cy="27" rx="6" ry="5" fill="#e91e63"/><circle cx="18" cy="27" r="2" fill="#ffeb3b"/>`;
+      } else if (t === 40) {
+        art = `<path d="M 18 39 L 18 20 M 18 25 L 12 21 M 18 29 L 24 25 M 18 33 L 13 31" stroke="#e65100" stroke-width="1.8" stroke-linecap="round"/><polygon points="18,18 14,23 22,23" fill="#f57c00"/>`;
+      } else if (t === 41) {
+        art = `<line x1="18" y1="21" x2="18" y2="37" stroke="#0288d1" stroke-width="1.8"/><line x1="10" y1="29" x2="26" y2="29" stroke="#0288d1" stroke-width="1.8"/><line x1="12" y1="23" x2="24" y2="35" stroke="#0288d1" stroke-width="1.5"/><line x1="12" y1="35" x2="24" y2="23" stroke="#0288d1" stroke-width="1.5"/><circle cx="18" cy="29" r="2" fill="#b3e5fc"/>`;
+      }
+      inner = `<rect x="3" y="4" width="7" height="9" rx="2" fill="${badgeCol}"/><text x="6.5" y="11" font-family="sans-serif" font-size="7" font-weight="900" fill="#ffffff" text-anchor="middle">${num}</text><text x="28" y="12" font-family="'Songti SC','Noto Serif CJK SC','STSong',serif" font-size="9" font-weight="900" fill="${badgeCol}" text-anchor="middle">${sign}</text>${art}`;
+    }
+    return `<svg viewBox="0 0 36 48" class="tile-face" aria-hidden="true">${inner}</svg>`;
   }
 
   const tileColor = (t) => {
