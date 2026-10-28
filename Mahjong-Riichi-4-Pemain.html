@@ -190,8 +190,11 @@ body:has(#gameView:not([hidden])) .app { max-width: 1720px; padding: 0 24px; }
 .opponent-left, .opponent-right {
   top: 50%; transform: translateY(-50%);
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 10px 8px; width: 124px;
+  padding: 12px 8px; width: 150px; height: 290px; justify-content: flex-start; overflow: hidden;
 }
+.opponent-left .opp-sub, .opponent-right .opp-sub { white-space: normal; text-align: center; line-height: 1.4; }
+.opponent-left .opp-score, .opponent-right .opp-score { display: block; }
+.opponent-left .opp-name, .opponent-right .opp-name { text-align: center; }
 .opponent-left { left: 14px; }
 .opponent-right { right: 14px; }
 
@@ -267,7 +270,7 @@ body:has(#gameView:not([hidden])) .app { max-width: 1720px; padding: 0 24px; }
 /* THE POND (CENTER DISCARDS & COMPASS) */
 .pond {
   position: absolute; z-index: 3;
-  left: 50%; top: 50%; transform: translate(-50%, -48%);
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: min(94%, 580px); height: 340px;
   display: grid;
   grid-template-columns: 185px 110px 185px;
