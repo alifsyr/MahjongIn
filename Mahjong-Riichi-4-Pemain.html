@@ -111,13 +111,29 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .game-toolbar-center { display: flex; align-items: center; gap: 10px; }
 .round-badge { font: 400 16px Georgia,serif; color: var(--cream); }
 .turn-counter-badge { font-size: 10px; letter-spacing: .12em; color: #a9bca7; background: rgba(0,0,0,.25); padding: 5px 9px; border-radius: 4px; font-weight: 600; }
-.game-toolbar-right { display: flex; align-items: center; gap: 8px; }
+.game-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .game-wall-pill { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #bad0bd; background: #061c16; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbb88f33; }
 .game-wall-pill strong { color: var(--gold); }
 .game-wall-pill .sep { color: #557766; }
 
+/* ZOOM CONTROLS */
+.zoom-switcher { display: flex; align-items: center; gap: 3px; background: #061c16; padding: 3px 6px; border-radius: 6px; border: 1px solid #cbb88f33; }
+.zoom-label { font-size: 10px; font-weight: 700; color: #aec3b0; letter-spacing: .05em; margin-right: 2px; }
+.zoom-btn { background: transparent; color: #bad0bd; border: 1px solid transparent; border-radius: 4px; padding: 4px 7px; font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s ease; }
+.zoom-btn:hover { background: #ffffff14; color: #fff; }
+.zoom-btn.active { background: #1f4f3e; color: var(--gold); border-color: #ffd88a66; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
 .game-layout { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; width: 100%; }
 .game-side { min-width: 0; width: 100%; }
+.game-side.zoom-140 { zoom: 1.4; }
+.game-side.zoom-120 { zoom: 1.2; }
+.game-side.zoom-100 { zoom: 1.0; }
+
+.game-side.zoom-140 .mahjong-table { height: clamp(500px, 60vh, 680px); }
+.game-side.zoom-120 .mahjong-table { height: clamp(540px, 66vh, 730px); }
+.game-side.zoom-100 .mahjong-table { height: clamp(580px, 72vh, 780px); }
+
+body:has(#gameView:not([hidden])) .app { max-width: 1720px; padding: 0 24px; }
 
 .game-view.show-sidebar .game-layout { grid-template-columns: minmax(0, 1fr) 280px; }
 .game-view:not(.show-sidebar) #gameSidebar { display: none; }
@@ -394,11 +410,13 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
   .game-view.show-sidebar .game-layout { grid-template-columns: 1fr; }
   .game-view.show-sidebar #gameSidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
   .top-caption { display: none; }
-  .opponent-left { left: 14px; }.opponent-right { right: 14px; }.pond { left: 12%; right: 12%; }.hand-tile { width: 45px; height: 59px; font-size: 25px; }
+  .opponent-left { left: 14px; }.opponent-right { right: 14px; }
 }
 @media(max-width:880px) {
+  .game-side.zoom-140, .game-side.zoom-120 { zoom: 1.0; }
+  .zoom-switcher { display: none; }
   .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.event-card,.sidebar-quote { display: none; }
-  .target-card h3 { margin-top: 10px; }.mahjong-table { height: 490px; }.hand-tile { width: 47px; height: 62px; }
+  .target-card h3 { margin-top: 10px; }.mahjong-table { height: 490px; }
 }
 @media(max-width:620px) {
   .app { padding: 0 12px; }.topbar { height: 64px; }.brand-icon { width: 34px; height: 39px; font-size: 22px; }.brand-word strong { font-size: 13px; }.brand-word small { font-size: 8px; }
@@ -2552,6 +2570,44 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
     if (event.key === 'Enter' && state.phase === 'discard' && state.selected !== null) playerDiscard();
   });
 
+  function applyZoom(zoomLevel) {
+    const gameSide = $('gameSide') || (typeof document.querySelector === 'function' ? document.querySelector('.game-side') : null);
+    if (!gameSide) return;
+    if (gameSide.classList) {
+      ['zoom-100', 'zoom-120', 'zoom-140'].forEach((c) => gameSide.classList.remove(c));
+      gameSide.classList.add(`zoom-${zoomLevel}`);
+    }
+
+    if (typeof document.querySelectorAll === 'function') {
+      const buttons = document.querySelectorAll('.zoom-btn');
+      buttons.forEach((b) => {
+        b.classList?.toggle('active', b.dataset?.zoom === String(zoomLevel));
+      });
+    }
+  }
+
+  function initZoomControls() {
+    let savedZoom = '140';
+    try {
+      savedZoom = localStorage.getItem('mahjongin_zoom') || '140';
+    } catch (_) {}
+    applyZoom(savedZoom);
+
+    const switcher = $('zoomSwitcher');
+    if (!switcher) return;
+    switcher.addEventListener('click', (e) => {
+      const btn = e.target.closest('.zoom-btn');
+      if (!btn) return;
+      const zoomLevel = btn.dataset.zoom;
+      if (zoomLevel) {
+        applyZoom(zoomLevel);
+        try {
+          localStorage.setItem('mahjongin_zoom', zoomLevel);
+        } catch (_) {}
+      }
+    });
+  }
+
   function checkTutorialPrompt() {
     try {
       const completed = localStorage.getItem('mahjong-tutorial-completed');
@@ -2565,6 +2621,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
   }
 
   showMenuView();
+  initZoomControls();
   checkTutorialPrompt();
   initSocket();
 })();
@@ -2705,6 +2762,12 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
             <span class="sep">|</span>
             <span>Dead Wall: <strong id="deadWallCount">14</strong></span>
           </div>
+          <div class="zoom-switcher" id="zoomSwitcher" role="group" aria-label="Game board zoom">
+            <span class="zoom-label">🔍 Zoom:</span>
+            <button type="button" class="zoom-btn" data-zoom="100" title="100% Zoom">100%</button>
+            <button type="button" class="zoom-btn" data-zoom="120" title="120% Zoom">120%</button>
+            <button type="button" class="zoom-btn active" data-zoom="140" title="140% Zoom (Default)">140%</button>
+          </div>
           <button id="newGame" class="text-button">↻ <span>New Round</span></button>
           <button id="toggleSidebarBtn" class="outline-small" title="Game Info">📋 <span>Game Info</span></button>
         </div>
@@ -2725,7 +2788,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
       </div>
 
       <div class="game-layout" id="gameLayout">
-        <div class="game-side" aria-label="Meja permainan Mahjong empat pemain">
+        <div class="game-side" id="gameSide" aria-label="Meja permainan Mahjong empat pemain">
           <div class="mahjong-table" id="mahjongTable">
             <div class="corner tl">✦</div><div class="corner tr">✦</div><div class="corner bl">✦</div><div class="corner br">✦</div>
             <div class="board-topline">✦ <span>JAKARTA MAHJONG CLUB</span> ✦</div>

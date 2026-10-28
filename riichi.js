@@ -2111,6 +2111,44 @@
     if (event.key === 'Enter' && state.phase === 'discard' && state.selected !== null) playerDiscard();
   });
 
+  function applyZoom(zoomLevel) {
+    const gameSide = $('gameSide') || (typeof document.querySelector === 'function' ? document.querySelector('.game-side') : null);
+    if (!gameSide) return;
+    if (gameSide.classList) {
+      ['zoom-100', 'zoom-120', 'zoom-140'].forEach((c) => gameSide.classList.remove(c));
+      gameSide.classList.add(`zoom-${zoomLevel}`);
+    }
+
+    if (typeof document.querySelectorAll === 'function') {
+      const buttons = document.querySelectorAll('.zoom-btn');
+      buttons.forEach((b) => {
+        b.classList?.toggle('active', b.dataset?.zoom === String(zoomLevel));
+      });
+    }
+  }
+
+  function initZoomControls() {
+    let savedZoom = '140';
+    try {
+      savedZoom = localStorage.getItem('mahjongin_zoom') || '140';
+    } catch (_) {}
+    applyZoom(savedZoom);
+
+    const switcher = $('zoomSwitcher');
+    if (!switcher) return;
+    switcher.addEventListener('click', (e) => {
+      const btn = e.target.closest('.zoom-btn');
+      if (!btn) return;
+      const zoomLevel = btn.dataset.zoom;
+      if (zoomLevel) {
+        applyZoom(zoomLevel);
+        try {
+          localStorage.setItem('mahjongin_zoom', zoomLevel);
+        } catch (_) {}
+      }
+    });
+  }
+
   function checkTutorialPrompt() {
     try {
       const completed = localStorage.getItem('mahjong-tutorial-completed');
@@ -2124,6 +2162,7 @@
   }
 
   showMenuView();
+  initZoomControls();
   checkTutorialPrompt();
   initSocket();
 })();

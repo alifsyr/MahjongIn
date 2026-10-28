@@ -23,8 +23,8 @@ function getElement(id) {
           if (val) this.classes.add(cls);
           else this.classes.delete(cls);
         },
-        add(cls) { this.classes.add(cls); },
-        remove(cls) { this.classes.delete(cls); },
+        add(...tokens) { tokens.forEach(t => this.classes.add(t)); },
+        remove(...tokens) { tokens.forEach(t => this.classes.delete(t)); },
         contains(cls) { return this.classes.has(cls); }
       },
       setAttribute() {},
@@ -56,8 +56,8 @@ const mockDoc = {
           if (val) this.classes.add(cls);
           else this.classes.delete(cls);
         },
-        add(cls) { this.classes.add(cls); },
-        remove(cls) { this.classes.delete(cls); },
+        add(...tokens) { tokens.forEach(t => this.classes.add(t)); },
+        remove(...tokens) { tokens.forEach(t => this.classes.delete(t)); },
         contains(cls) { return this.classes.has(cls); }
       },
       setAttribute() {},
@@ -90,11 +90,12 @@ const domSandbox = {
 const patchedSource = source
   .replace('function showMenuView(', 'globalThis.showMenuView = function showMenuView(')
   .replace('function showGameView(', 'globalThis.showGameView = function showGameView(')
-  .replace('function handleBackToMenu(', 'globalThis.handleBackToMenu = function handleBackToMenu(');
+  .replace('function handleBackToMenu(', 'globalThis.handleBackToMenu = function handleBackToMenu(')
+  .replace('function applyZoom(', 'globalThis.applyZoom = function applyZoom(');
 
 vm.runInNewContext(patchedSource, domSandbox);
 
-const { showMenuView, showGameView, handleBackToMenu } = domSandbox;
+const { showMenuView, showGameView, handleBackToMenu, applyZoom } = domSandbox;
 
 // 1. Initial State: Menu View is visible, Game View is hidden
 console.log('1. Testing initial view state...');
@@ -130,4 +131,16 @@ assert(gameViewEl.classList.contains('show-sidebar'), 'gameView has show-sidebar
 toggleBtn.listeners['click']();
 assert(!gameViewEl.classList.contains('show-sidebar'), 'gameView hides sidebar after second toggle');
 
-console.log('All menu and layout switching tests passed successfully!');
+// 5. Zoom controls (140% default zoom magnification)
+console.log('5. Testing Zoom controls (100%, 120%, 140%)...');
+const gameSideEl = elements['gameSide'];
+assert(gameSideEl.classList.contains('zoom-140'), 'Default zoom level must be zoom-140');
+
+applyZoom('120');
+assert(gameSideEl.classList.contains('zoom-120'), 'applyZoom(120) adds zoom-120');
+assert(!gameSideEl.classList.contains('zoom-140'), 'applyZoom(120) removes zoom-140');
+
+applyZoom('140');
+assert(gameSideEl.classList.contains('zoom-140'), 'applyZoom(140) restores zoom-140');
+
+console.log('All menu, layout, and zoom controls tests passed successfully!');

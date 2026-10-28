@@ -145,6 +145,12 @@
             <span class="sep">|</span>
             <span>Dead Wall: <strong id="deadWallCount">14</strong></span>
           </div>
+          <div class="zoom-switcher" id="zoomSwitcher" role="group" aria-label="Game board zoom">
+            <span class="zoom-label">🔍 Zoom:</span>
+            <button type="button" class="zoom-btn" data-zoom="100" title="100% Zoom">100%</button>
+            <button type="button" class="zoom-btn" data-zoom="120" title="120% Zoom">120%</button>
+            <button type="button" class="zoom-btn active" data-zoom="140" title="140% Zoom (Default)">140%</button>
+          </div>
           <button id="newGame" class="text-button">↻ <span>New Round</span></button>
           <button id="toggleSidebarBtn" class="outline-small" title="Game Info">📋 <span>Game Info</span></button>
         </div>
@@ -165,7 +171,7 @@
       </div>
 
       <div class="game-layout" id="gameLayout">
-        <div class="game-side" aria-label="Meja permainan Mahjong empat pemain">
+        <div class="game-side" id="gameSide" aria-label="Meja permainan Mahjong empat pemain">
           <div class="mahjong-table" id="mahjongTable">
             <div class="corner tl">✦</div><div class="corner tr">✦</div><div class="corner bl">✦</div><div class="corner br">✦</div>
             <div class="board-topline">✦ <span>JAKARTA MAHJONG CLUB</span> ✦</div>
