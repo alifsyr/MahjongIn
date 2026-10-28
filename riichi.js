@@ -809,19 +809,29 @@
       container.classList.toggle('current', state.current === seat && state.active);
       container.classList.toggle('disconnected', isDc);
       container.classList.toggle('player-disconnected', isDc);
-      const backs = Array.from({ length: Math.min(9, player.hand.length) }, () => '<i class="tile-back"></i>').join('');
+
+      const isCurrentTurn = state.current === seat && state.active && state.phase === 'discard';
+      const backs = Array.from({ length: player.hand.length }, (_, i) => {
+        const isDrawn = isCurrentTurn && i === player.hand.length - 1;
+        return `<i class="tile-back${isDrawn ? ' drawn' : ''}"></i>`;
+      }).join('');
+
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
-      const flowers = player.flowers.length ? `<div class="opp-flowers"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
+      const flowers = player.flowers.length ? `<div class="opp-flowers" title="Bunga & Musim: ${player.flowers.length} ubin"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
       const dcTag = isDc ? '<span class="opp-dc-tag">(Terputus...)</span>' : '';
+
       container.innerHTML = `
-        <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
-        <div class="opp-info">
-          <div class="opp-name">${player.name}${dcTag}</div>
-          <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} ubin · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
+        <div class="opp-profile">
+          <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
+          <div class="opp-info">
+            <div class="opp-name">${player.name}${dcTag}</div>
+            <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} ubin · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
+          </div>
         </div>
-        <div class="opp-backs">${backs}</div>
-        ${melds ? `<div class="opp-melds">${melds}</div>` : ''}
-        ${flowers}
+        <div class="opp-rack">
+          <div class="opp-backs" title="${player.hand.length} ubin tertutup">${backs}</div>
+          ${(melds || flowers) ? `<div class="opp-exposed">${melds ? `<div class="opp-melds">${melds}</div>` : ''}${flowers}</div>` : ''}
+        </div>
       `;
     }
   }
