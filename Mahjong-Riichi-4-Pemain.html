@@ -318,7 +318,15 @@ body:has(#gameView:not([hidden])) .app {
 }
 .opponent.current {
   border-color: #ffd88a;
-  box-shadow: 0 0 0 2px rgba(255, 216, 138, 0.5), 0 12px 28px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 216, 138, 0.6), 0 12px 28px rgba(0, 0, 0, 0.7);
+}
+.opponent.current .opp-avatar-ring {
+  box-shadow: 0 0 0 2.5px #ffd88a, 0 0 18px rgba(255, 216, 138, 0.85);
+  animation: turnPulseBot 1.4s infinite ease-in-out;
+}
+@keyframes turnPulseBot {
+  0%, 100% { box-shadow: 0 0 0 2px #ffd88a, 0 0 10px rgba(255, 216, 138, 0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 0 4px #ffe4a0, 0 0 22px rgba(255, 228, 160, 0.95); transform: scale(1.06); }
 }
 
 /* TOP OPPONENT (North / Bot 2) */
@@ -408,10 +416,17 @@ body:has(#gameView:not([hidden])) .app {
   box-shadow: 0 2px 6px rgba(0,0,0,0.5); line-height: 1.2;
 }
 .opp-turn-bubble {
-  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
-  background: #ffd88a; color: #1a0f02; font-size: 8px; font-weight: 800;
-  letter-spacing: .04em; padding: 2px 6px; border-radius: 6px;
-  white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  position: absolute; top: -19px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(180deg, #ffe082, #e6a836);
+  color: #1a0f02; font-size: 8px; font-weight: 800;
+  letter-spacing: .06em; padding: 2px 7px; border-radius: 6px;
+  white-space: nowrap; box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+  border: 1px solid #ffeaaf;
+  animation: bounceBubble 0.9s infinite alternate ease-in-out;
+}
+@keyframes bounceBubble {
+  from { transform: translateX(-50%) translateY(0); }
+  to { transform: translateX(-50%) translateY(-2px); }
 }
 .opp-score-pill {
   font-size: 9px; font-weight: 700; color: #fedb9b;
@@ -502,10 +517,12 @@ body:has(#gameView:not([hidden])) .app {
   color: #2b6554;
 }
 .discard-tiles .mini-tile.latest {
-  outline: 2px solid #ffd88a;
-  box-shadow: 0 0 6px rgba(255, 216, 138, 0.7);
-  transform: translateY(-2px);
-  z-index: 2;
+  outline: 2.5px solid #ffd88a;
+  box-shadow: 0 0 14px rgba(255, 216, 138, 0.95), 0 4px 10px rgba(0,0,0,0.5);
+  transform: translateY(-3px) scale(1.1);
+  z-index: 5;
+  position: relative;
+  border-color: #ffd88a;
 }
 
 .discard-north {
@@ -595,6 +612,15 @@ body:has(#gameView:not([hidden])) .app {
   padding: 2px;
   background: linear-gradient(135deg, #ffd88a, #856123);
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: all .2s ease;
+}
+.hand-section:has(.turn-indicator.active) .player-avatar-ring {
+  box-shadow: 0 0 0 2.5px #52c41a, 0 0 16px rgba(82, 196, 26, 0.7);
+  animation: turnPulsePlayer 1.4s infinite ease-in-out;
+}
+@keyframes turnPulsePlayer {
+  0%, 100% { box-shadow: 0 0 0 2px #52c41a, 0 0 10px rgba(82, 196, 26, 0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 0 4px #73d13d, 0 0 20px rgba(115, 209, 61, 0.9); transform: scale(1.05); }
 }
 .player-avatar {
   width: 100%;
@@ -839,17 +865,30 @@ body:has(#gameView:not([hidden])) .app {
   flex-wrap: wrap;
   gap: 8px;
 }
-.sidebar { display: flex; flex-direction: column; gap: 14px; padding-top: 7px; }
-.info-card { padding: 20px; border: 1px solid #c4ae7c45; border-radius: 10px; background: linear-gradient(145deg,#1c4a3bdb,#10352ddb); }
-.card-label { display: flex; align-items: center; justify-content: space-between; color: #d8c08e; font-size: 9px; letter-spacing: .18em; font-weight: 600; }.card-label span:last-child { font-size: 17px; }
-.wall-number { display: flex; align-items: baseline; gap: 12px; margin: 16px 0 13px; }.wall-number strong { color: #f2d69c; font: 49px Georgia,serif; }.wall-number span { font-size: 11px; color: #b7c9b7; }
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 6px 12px;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.info-card {
+  padding: 12px 14px;
+  border: 1px solid #c4ae7c45;
+  border-radius: 10px;
+  background: linear-gradient(145deg,#1c4a3bdb,#10352ddb);
+}
+.card-label { display: flex; align-items: center; justify-content: space-between; color: #d8c08e; font-size: 9px; letter-spacing: .18em; font-weight: 600; }.card-label span:last-child { font-size: 15px; }
+.wall-number { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 8px; }.wall-number strong { color: #f2d69c; font: 40px Georgia,serif; }.wall-number span { font-size: 10px; color: #b7c9b7; }
 .wall-meter { height: 4px; border-radius: 3px; background: #b0bd9e2c; overflow: hidden; }.wall-meter div { height: 100%; width: 100%; background: linear-gradient(90deg,#82b89c,#e4c687); transition: width .2s; }
-.status-box { display: flex; align-items: center; justify-content: center; min-height: 39px; margin-top: 14px; padding: 9px; border-radius: 6px; background: #d5c18d13; color: #c8d7bd; font-size: 11px; line-height: 1.4; text-align: center; }
-.target-card h3 { font: 23px Georgia,serif; margin: 15px 0 8px; }.target-card h3 span { color: #d2b777; }.target-card>p { color: #adbfac; font-size: 11px; line-height: 1.6; margin: 0 0 14px; }
-.rule-mini div { display: flex; align-items: center; gap: 13px; padding: 9px 0; border-top: 1px solid #f4db9f25; }.rule-mini b { width: 31px; color: #ecd5a3; font-size: 10px; }.rule-mini span { color: #bed0bb; font-size: 11px; }
-.learn-button { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 10px 12px; background: #c8b08416; color: #ddca9d; border: 1px solid #b99e6a60; border-radius: 6px; font-size: 11px; }
-.event-log { display: flex; flex-direction: column; gap: 11px; margin-top: 17px; max-height: 177px; overflow: auto; }.event-line { display: flex; gap: 9px; color: #afc1ac; font-size: 10px; line-height: 1.45; }.event-line:first-child { color: #f4deb0; }.event-dot { color: #d7bd88; }
-.sidebar-quote { padding: 3px 10px; color: #b9c9ae; font: italic 15px/1.5 Georgia,serif; text-align: center; }.sidebar-quote span { display: block; height: 27px; color: #c6aa71; font: 32px Georgia,serif; }
+.status-box { display: flex; align-items: center; justify-content: center; min-height: 34px; margin-top: 10px; padding: 7px; border-radius: 6px; background: #d5c18d13; color: #c8d7bd; font-size: 11px; line-height: 1.4; text-align: center; }
+.target-card h3 { font: 20px Georgia,serif; margin: 10px 0 6px; }.target-card h3 span { color: #d2b777; }.target-card>p { color: #adbfac; font-size: 11px; line-height: 1.5; margin: 0 0 10px; }
+.rule-mini div { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid #f4db9f25; }.rule-mini b { width: 31px; color: #ecd5a3; font-size: 10px; }.rule-mini span { color: #bed0bb; font-size: 11px; }
+.learn-button { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding: 8px 12px; background: #c8b08416; color: #ddca9d; border: 1px solid #b99e6a60; border-radius: 6px; font-size: 11px; }
+.event-log { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 130px; overflow: auto; }.event-line { display: flex; gap: 9px; color: #afc1ac; font-size: 10px; line-height: 1.45; }.event-line:first-child { color: #f4deb0; }.event-dot { color: #d7bd88; }
+.sidebar-quote { padding: 4px 8px; color: #b9c9ae; font: italic 13px/1.4 Georgia,serif; text-align: center; }.sidebar-quote span { display: block; height: 18px; color: #c6aa71; font: 22px Georgia,serif; }
 footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }footer span { padding: 0 6px; }
 .overlay { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: #061c17dc; backdrop-filter: blur(8px); }.overlay[hidden] { display: none; }
 .dialog { position: relative; width: min(100%,540px); max-height: 92vh; overflow: auto; padding: 29px 35px; text-align: center; background: radial-gradient(ellipse at top,#275644,#12392f 85%); border: 1px solid #bca473; border-radius: 15px; box-shadow: 0 35px 80px #000a,inset 0 0 0 6px #163c31,inset 0 0 0 7px #cfb67b44; }
@@ -2207,7 +2246,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
       container.classList.toggle('disconnected', isDc);
       container.classList.toggle('player-disconnected', isDc);
 
-      const isCurrentTurn = state.current === seat && state.active && state.phase === 'discard';
+      const isCurrentTurn = state.current === seat && state.active && (state.phase === 'discard' || state.phase === 'bot');
       const backs = Array.from({ length: player.hand.length }, (_, i) => {
         const isDrawn = isCurrentTurn && i === player.hand.length - 1;
         return `<i class="tile-back${isDrawn ? ' drawn' : ''}"></i>`;
@@ -2216,7 +2255,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
       const flowers = player.flowers.length ? `<div class="opp-flowers" title="Flower Tiles: ${player.flowers.length}"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
       const dcTag = isDc ? '<span class="opp-dc-tag">(Terputus...)</span>' : '';
-      const turnStatus = isCurrentTurn ? '<span class="opp-turn-bubble">Giliran...</span>' : '';
+      const turnStatus = isCurrentTurn ? '<span class="opp-turn-bubble">Thinking...</span>' : '';
 
       container.innerHTML = `
         <div class="opp-profile">
@@ -2264,9 +2303,20 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
       btn.setAttribute('aria-pressed', String(state.selected === index));
       btn.disabled = !state.active || state.phase !== 'discard' || state.current !== 0;
       btn.addEventListener('click', () => {
-        state.selected = state.selected === index ? null : index;
-        renderHand();
-        renderActions();
+        if (state.phase !== 'discard' || state.current !== 0) return;
+        if (state.selected === index) {
+          playerDiscard();
+        } else {
+          state.selected = index;
+          renderHand();
+          renderActions();
+        }
+      });
+      btn.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        if (state.phase !== 'discard' || state.current !== 0) return;
+        state.selected = index;
+        playerDiscard();
       });
       container.appendChild(btn);
     });
@@ -2297,10 +2347,10 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
     const active = state.active && state.current === 0 && ['draw', 'discard', 'claim'].includes(state.phase);
     $('turnIndicator').classList.toggle('active', active);
     $('turnIndicator').textContent = !state.active ? 'ROUND OVER' : state.phase === 'claim' ? 'CLAIM' : active ? 'YOUR TURN' : 'WAITING';
-    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Draw a tile to begin your turn.' :
-      state.phase === 'discard' && state.current === 0 ? 'Select a tile, then click Discard.' :
-      state.phase === 'claim' ? 'Choose an action or Pass.' :
-      !state.active ? 'Round complete. Start a new round to continue.' : 'Waiting for opponent...';
+    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Draw a tile from the wall to begin your turn.' :
+      state.phase === 'discard' && state.current === 0 ? (state.selected === null ? 'Click a tile to select, or double-click to discard.' : `Selected: <strong>${tileName(displayedHand()[state.selected])}</strong> · Click Discard or tap tile again.`) :
+      state.phase === 'claim' ? `Claim opportunity from ${NAMES[state.pending?.discarder]}! Choose action in dock or Pass.` :
+      !state.active ? 'Round complete. Click New Round to play again.' : `Waiting for ${NAMES[state.current]}...`;
   }
 
   function renderActions() {
@@ -2346,21 +2396,24 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
           }
         });
       }
+    } else if (state.phase === 'claim' && state.pending) {
+      const { discarder, tile, options } = state.pending;
+      options.forEach((option, index) => {
+        const name = option.kind === 'ron' ? '✿ RON (Mahjong!)' :
+                     option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join('·')}` :
+                     option.kind === 'pon' ? 'PON' : 'KAN';
+        const kindCls = option.kind === 'ron' ? 'btn-ron' : option.kind === 'chi' ? 'btn-chi' : 'btn-pon';
+        bar.append(createButton(name, `primary-action ${kindCls}`, () => playerClaim(index)));
+      });
+      bar.append(createButton('Pass', 'secondary-action btn-pass', passClaim));
     } else {
       bar.append(createButton('Waiting...', 'soft-action btn-waiting', () => {}, true));
     }
     const claimBar = $('claimBar');
     claimBar.hidden = state.phase !== 'claim' || !state.pending;
     if (claimBar.hidden) { claimBar.replaceChildren(); return; }
-    const { discarder, tile, options } = state.pending;
-    claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} discards ${tileName(tile)}</strong><span>Choose a claim action or Pass.</span></div><div class="claim-options" id="claimOptions"></div>`;
-    const choices = $('claimOptions');
-    options.forEach((option, index) => {
-      const name = option.kind === 'ron' ? '✿ RON : Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON' : 'KAN';
-      const kindCls = option.kind === 'ron' ? 'btn-ron' : option.kind === 'chi' ? 'btn-chi' : 'btn-pon';
-      choices.append(createButton(name, `claim-action ${kindCls}`, () => playerClaim(index)));
-    });
-    choices.append(createButton('Pass', 'claim-action pass btn-pass', passClaim));
+    const { discarder, tile } = state.pending;
+    claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} discards ${tileName(tile)}!</strong><span>Choose action in dock on the right or Pass.</span></div>`;
   }
 
   function render() {
@@ -2376,7 +2429,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
     if ($('deadWallCount')) $('deadWallCount').textContent = deadWall;
     if ($('centerDeadWall')) $('centerDeadWall').textContent = `DW: ${deadWall}`;
     $('wallProgress').style.width = `${Math.min(100, (left / 92) * 100)}%`;
-    $('turnCounter').textContent = `GILIRAN ${state.turn}`;
+    $('turnCounter').textContent = `TURN ${state.turn}`;
     $('eventLog').innerHTML = state.log.slice(0, 8).map((event) => `<div class="event-line"><span class="event-dot">✦</span><span>${event}</span></div>`).join('');
   }
 

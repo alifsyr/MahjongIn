@@ -810,7 +810,7 @@
       container.classList.toggle('disconnected', isDc);
       container.classList.toggle('player-disconnected', isDc);
 
-      const isCurrentTurn = state.current === seat && state.active && state.phase === 'discard';
+      const isCurrentTurn = state.current === seat && state.active && (state.phase === 'discard' || state.phase === 'bot');
       const backs = Array.from({ length: player.hand.length }, (_, i) => {
         const isDrawn = isCurrentTurn && i === player.hand.length - 1;
         return `<i class="tile-back${isDrawn ? ' drawn' : ''}"></i>`;
@@ -819,7 +819,7 @@
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
       const flowers = player.flowers.length ? `<div class="opp-flowers" title="Flower Tiles: ${player.flowers.length}"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
       const dcTag = isDc ? '<span class="opp-dc-tag">(Terputus...)</span>' : '';
-      const turnStatus = isCurrentTurn ? '<span class="opp-turn-bubble">Giliran...</span>' : '';
+      const turnStatus = isCurrentTurn ? '<span class="opp-turn-bubble">Thinking...</span>' : '';
 
       container.innerHTML = `
         <div class="opp-profile">
@@ -867,9 +867,20 @@
       btn.setAttribute('aria-pressed', String(state.selected === index));
       btn.disabled = !state.active || state.phase !== 'discard' || state.current !== 0;
       btn.addEventListener('click', () => {
-        state.selected = state.selected === index ? null : index;
-        renderHand();
-        renderActions();
+        if (state.phase !== 'discard' || state.current !== 0) return;
+        if (state.selected === index) {
+          playerDiscard();
+        } else {
+          state.selected = index;
+          renderHand();
+          renderActions();
+        }
+      });
+      btn.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        if (state.phase !== 'discard' || state.current !== 0) return;
+        state.selected = index;
+        playerDiscard();
       });
       container.appendChild(btn);
     });
@@ -900,10 +911,10 @@
     const active = state.active && state.current === 0 && ['draw', 'discard', 'claim'].includes(state.phase);
     $('turnIndicator').classList.toggle('active', active);
     $('turnIndicator').textContent = !state.active ? 'ROUND OVER' : state.phase === 'claim' ? 'CLAIM' : active ? 'YOUR TURN' : 'WAITING';
-    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Draw a tile to begin your turn.' :
-      state.phase === 'discard' && state.current === 0 ? 'Select a tile, then click Discard.' :
-      state.phase === 'claim' ? 'Choose an action or Pass.' :
-      !state.active ? 'Round complete. Start a new round to continue.' : 'Waiting for opponent...';
+    $('drawnNote').innerHTML = state.phase === 'draw' ? 'Draw a tile from the wall to begin your turn.' :
+      state.phase === 'discard' && state.current === 0 ? (state.selected === null ? 'Click a tile to select, or double-click to discard.' : `Selected: <strong>${tileName(displayedHand()[state.selected])}</strong> · Click Discard or tap tile again.`) :
+      state.phase === 'claim' ? `Claim opportunity from ${NAMES[state.pending?.discarder]}! Choose action in dock or Pass.` :
+      !state.active ? 'Round complete. Click New Round to play again.' : `Waiting for ${NAMES[state.current]}...`;
   }
 
   function renderActions() {
@@ -949,21 +960,24 @@
           }
         });
       }
+    } else if (state.phase === 'claim' && state.pending) {
+      const { discarder, tile, options } = state.pending;
+      options.forEach((option, index) => {
+        const name = option.kind === 'ron' ? '✿ RON (Mahjong!)' :
+                     option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join('·')}` :
+                     option.kind === 'pon' ? 'PON' : 'KAN';
+        const kindCls = option.kind === 'ron' ? 'btn-ron' : option.kind === 'chi' ? 'btn-chi' : 'btn-pon';
+        bar.append(createButton(name, `primary-action ${kindCls}`, () => playerClaim(index)));
+      });
+      bar.append(createButton('Pass', 'secondary-action btn-pass', passClaim));
     } else {
       bar.append(createButton('Waiting...', 'soft-action btn-waiting', () => {}, true));
     }
     const claimBar = $('claimBar');
     claimBar.hidden = state.phase !== 'claim' || !state.pending;
     if (claimBar.hidden) { claimBar.replaceChildren(); return; }
-    const { discarder, tile, options } = state.pending;
-    claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} discards ${tileName(tile)}</strong><span>Choose a claim action or Pass.</span></div><div class="claim-options" id="claimOptions"></div>`;
-    const choices = $('claimOptions');
-    options.forEach((option, index) => {
-      const name = option.kind === 'ron' ? '✿ RON : Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON' : 'KAN';
-      const kindCls = option.kind === 'ron' ? 'btn-ron' : option.kind === 'chi' ? 'btn-chi' : 'btn-pon';
-      choices.append(createButton(name, `claim-action ${kindCls}`, () => playerClaim(index)));
-    });
-    choices.append(createButton('Pass', 'claim-action pass btn-pass', passClaim));
+    const { discarder, tile } = state.pending;
+    claimBar.innerHTML = `<div class="claim-heading"><strong>${NAMES[discarder]} discards ${tileName(tile)}!</strong><span>Choose action in dock on the right or Pass.</span></div>`;
   }
 
   function render() {
@@ -979,7 +993,7 @@
     if ($('deadWallCount')) $('deadWallCount').textContent = deadWall;
     if ($('centerDeadWall')) $('centerDeadWall').textContent = `DW: ${deadWall}`;
     $('wallProgress').style.width = `${Math.min(100, (left / 92) * 100)}%`;
-    $('turnCounter').textContent = `GILIRAN ${state.turn}`;
+    $('turnCounter').textContent = `TURN ${state.turn}`;
     $('eventLog').innerHTML = state.log.slice(0, 8).map((event) => `<div class="event-line"><span class="event-dot">✦</span><span>${event}</span></div>`).join('');
   }
 
