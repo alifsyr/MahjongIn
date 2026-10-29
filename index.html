@@ -19,7 +19,13 @@
         <span class="brand-icon">中</span>
         <span class="brand-word"><strong>MAHJONG</strong><small>JAKARTA CLUB</small></span>
       </a>
-      <div class="top-caption"><span>✧</span> JAKARTA LOUNGE TABLE · 144 UBIN <span>✧</span></div>
+      <div class="topbar-center-hud">
+        <div class="chip-hud-pill">
+          <span class="chip-icon">🪙</span>
+          <span class="chip-amount" id="topbarPoints">10,000</span>
+          <span class="chip-unit">PTS</span>
+        </div>
+      </div>
       <div class="top-actions">
         <span class="live-pill" id="serverPill">
           <span class="live-dot connecting" id="serverDot"></span>
@@ -31,16 +37,38 @@
       </div>
     </header>
 
-    <!-- 1. MENU VIEW (LOBBY & MODE SELECTION) -->
+    <!-- 1. MENU VIEW (CAPSA BANTING STYLE LOUNGE LOBBY) -->
     <section id="menuView" class="menu-view">
-      <div class="menu-hero">
-        <div class="eyebrow">TREN VIRAL JAKARTA · 144 UBIN HONG KONG STYLE</div>
-        <h1 class="menu-title">Sensasi <em>Mahjong</em> Lounge Meja Otomatis.</h1>
-        <p class="menu-subtitle">Aturan santai kafe Jakarta: 4 kelompok (Chi / Pon / Kan) + 1 pasang (Mata), 8 ubin bunga & musim, serta sistem nilai Fan.</p>
+      <div class="lobby-hero">
+        <div class="lobby-dealer-podium">
+          <div class="dealer-avatar-frame">
+            <img src="./assets/dealer.jpg" alt="Mahjong Lounge Dealer" class="dealer-img" width="180" height="180" />
+            <div class="dealer-badge">VIP DEALER</div>
+          </div>
+          <div class="lobby-title-wrap">
+            <div class="lobby-kicker">✦ JAKARTA MAHJONG CLUB · 144 UBIN ✦</div>
+            <h1 class="lobby-headline">Sensasi Meja Otomatis Lounge</h1>
+            <p class="lobby-subtext">Hong Kong Style 144 Ubin: 4 kelompok (Chi / Pon / Kan) + 1 pasang (Mata), 8 bunga & musim, serta aturan bayar kafe.</p>
+          </div>
+        </div>
+
+        <!-- CENTERPIECE TACTILE PLAY NOW BUTTON (CAPSA BANTING SIGNATURE) -->
+        <div class="play-now-container">
+          <button id="startSoloGameBtn" class="play-now-cta" type="button">
+            <span class="play-now-icon">▶</span>
+            <span class="play-now-content">
+              <strong class="play-now-label">PLAY NOW</strong>
+              <small class="play-now-meta">Solo vs 3 AI Bot · 10,000 pts</small>
+            </span>
+          </button>
+        </div>
 
         <div class="player-bar-card">
           <div class="player-profile-row">
-            <span class="player-profile-avatar">東</span>
+            <div class="profile-avatar-wrap">
+              <span class="player-profile-avatar">東</span>
+              <span class="profile-level-tag">Lv.1</span>
+            </div>
             <div class="player-profile-meta">
               <label for="menuPlayerNameInput">NAMA PEMAIN</label>
               <input id="menuPlayerNameInput" class="player-name-input" maxlength="15" placeholder="Masukkan namamu" value="Kamu" />
@@ -72,19 +100,6 @@
       </div>
 
       <div class="menu-grid">
-        <div class="menu-card featured" id="menuSoloCard">
-          <div class="menu-card-kicker">MODE LATIHAN SANTAI</div>
-          <div class="menu-card-icon">🀄</div>
-          <h3>Main Solo (Offline)</h3>
-          <p>Bermain langsung melawan 3 AI Bot di meja otomatis. Asah strategi, hitung kombinasi Fan, dan nikmati permainan santai tanpa tekanan waktu.</p>
-          <div class="menu-card-tags">
-            <span>Solo Bot</span>
-            <span>144 Ubin</span>
-            <span>Bebas Waktu</span>
-          </div>
-          <button id="startSoloGameBtn" class="primary-action menu-card-btn">▶ Masuk Meja Solo</button>
-        </div>
-
         <div class="menu-card featured online" id="menuOnlineCard">
           <div class="menu-card-kicker">MULTIPLAYER LIVE</div>
           <div class="menu-card-icon">🌐</div>
@@ -122,6 +137,10 @@
             <span>Aturan Kafe</span>
           </div>
           <button id="openRulesMenuBtn" class="secondary-action menu-card-btn">📖 Baca Aturan</button>
+        </div>
+
+        <div class="menu-card" id="menuSoloCard" style="display: none;" aria-hidden="true">
+          <button id="soloBackupBtn" type="button" aria-hidden="true"></button>
         </div>
       </div>
 
@@ -205,20 +224,27 @@
 
           <div class="hand-section">
             <div class="hand-header">
-              <div class="player-avatar">東</div>
-              <div>
-                <div class="player-label">East Seat · You · <strong id="myScoreDisplay" class="score-display">10,000 pts</strong></div>
+              <div class="player-avatar-ring">
+                <span class="player-avatar">東</span>
+                <span class="player-level-badge">Lv.1</span>
+              </div>
+              <div class="player-meta-info">
+                <div class="player-label">East Seat · <span id="myPlayerNameDisplay">Kamu</span> · <strong id="myScoreDisplay" class="score-display">10,000 pts</strong></div>
                 <strong>Hand <span id="handCount">13 Tiles</span></strong>
               </div>
               <div class="turn-indicator" id="turnIndicator">WAITING</div>
             </div>
             <div class="flower-tray" id="myFlowers" hidden></div>
             <div class="meld-tray" id="myMelds" hidden></div>
-            <div class="hand-container">
-              <div id="myHand" class="my-hand" role="group" aria-label="Ubin di tanganmu"></div>
+            <div class="hand-play-row">
+              <div class="hand-container">
+                <div id="myHand" class="my-hand" role="group" aria-label="Ubin di tanganmu"></div>
+              </div>
+              <div class="action-dock">
+                <div id="actionBar" class="action-bar"></div>
+              </div>
             </div>
             <div id="drawnNote" class="hand-help">Draw a tile to begin your turn.</div>
-            <div id="actionBar" class="action-bar"></div>
             <div id="claimBar" class="claim-bar" hidden></div>
           </div>
         </div>

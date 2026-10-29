@@ -819,13 +819,20 @@
       const melds = player.melds.map((meld) => `<span class="opp-meld-item">${meld.tiles.map((t) => miniTile(t)).join('')}</span>`).join('');
       const flowers = player.flowers.length ? `<div class="opp-flowers" title="Flower Tiles: ${player.flowers.length}"><span class="flower-icon">🌸</span>${player.flowers.map((t) => miniTile(t)).join('')}</div>` : '';
       const dcTag = isDc ? '<span class="opp-dc-tag">(Terputus...)</span>' : '';
+      const turnStatus = isCurrentTurn ? '<span class="opp-turn-bubble">Giliran...</span>' : '';
 
       container.innerHTML = `
         <div class="opp-profile">
-          <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
+          <div class="opp-avatar-ring">
+            <span class="opp-avatar">${WIND_SIGNS[seat]}</span>
+            <span class="opp-level">Lv.${seat * 3 + 2}</span>
+            <span class="opp-card-badge" title="${player.hand.length} Ubin Tersisa">${player.hand.length}</span>
+            ${turnStatus}
+          </div>
           <div class="opp-info">
             <div class="opp-name">${player.name}${dcTag}</div>
-            <div class="opp-sub">${WINDS[seat]} · ${player.hand.length} Tiles · <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
+            <div class="opp-score-pill">🪙 <strong class="opp-score">${player.score.toLocaleString('id-ID')} pts</strong></div>
+            <div class="opp-seat-tag">${WINDS[seat]} Seat</div>
           </div>
         </div>
         <div class="opp-rack">
@@ -878,6 +885,14 @@
     if (myScore) {
       myScore.textContent = `${state.players[0].score.toLocaleString('id-ID')} pts`;
     }
+    const topPoints = $('topbarPoints');
+    if (topPoints) {
+      topPoints.textContent = state.players[0].score.toLocaleString('id-ID');
+    }
+    const myNameDisplay = $('myPlayerNameDisplay');
+    if (myNameDisplay) {
+      myNameDisplay.textContent = state.players[0].name || (typeof playerName !== 'undefined' && playerName ? playerName : 'Kamu');
+    }
 
     const meldTray = $('myMelds');
     meldTray.hidden = !state.players[0].melds.length;
@@ -895,14 +910,14 @@
     const bar = $('actionBar');
     bar.replaceChildren();
     if (!state.active) {
-      bar.append(createButton('↻ Play Again', 'primary-action', startNewGame));
+      bar.append(createButton('↻ Play Again', 'primary-action btn-playagain', startNewGame));
     } else if (state.current === 0 && state.phase === 'draw') {
-      bar.append(createButton('✦ Draw', 'primary-action', playerDraw));
+      bar.append(createButton('✦ Draw', 'primary-action btn-draw', playerDraw));
     } else if (state.current === 0 && state.phase === 'discard') {
       const player = state.players[0];
       const canWinTsumo = onlineSession ? !!state.canTsumo : isWinningHand(player.hand, player.melds.length);
       if (canWinTsumo) {
-        bar.append(createButton('✿ MAHJONG! (Tsumo)', 'primary-action', () => {
+        bar.append(createButton('✿ MAHJONG! (Tsumo)', 'primary-action btn-tsumo', () => {
           if (onlineSession) {
             setStatus('Mendeklarasikan Tsumo...');
             socket?.emit('game:tsumo');
@@ -911,11 +926,11 @@
           }
         }));
       }
-      bar.append(createButton('Discard', 'primary-action', playerDiscard, state.selected === null));
+      bar.append(createButton('Discard', 'primary-action btn-discard', playerDiscard, state.selected === null));
       if (onlineSession) {
         const kongTiles = Array.isArray(state.canKongTiles) ? state.canKongTiles : [];
         kongTiles.forEach((t) => {
-          bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => {
+          bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action btn-kan', () => {
             setStatus('Mendeklarasikan Kan...');
             socket?.emit('game:kong', { tile: t });
           }));
@@ -924,18 +939,18 @@
         const counts = countsFor(player.hand);
         counts.forEach((n, t) => {
           if (n >= 4 && state.wall.length)
-            bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => playerClosedKan(t)));
+            bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action btn-kan', () => playerClosedKan(t)));
         });
         player.melds.forEach((m) => {
           if (m.kind === 'pon') {
             const t = m.tiles[0];
             if (counts[t] >= 1 && state.wall.length)
-              bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action', () => playerPromotedKan(t)));
+              bar.append(createButton(`Kan: ${tileShort(t)}`, 'secondary-action btn-kan', () => playerPromotedKan(t)));
           }
         });
       }
     } else {
-      bar.append(createButton('Waiting...', 'soft-action', () => {}, true));
+      bar.append(createButton('Waiting...', 'soft-action btn-waiting', () => {}, true));
     }
     const claimBar = $('claimBar');
     claimBar.hidden = state.phase !== 'claim' || !state.pending;
@@ -945,9 +960,10 @@
     const choices = $('claimOptions');
     options.forEach((option, index) => {
       const name = option.kind === 'ron' ? '✿ RON : Mahjong!' : option.kind === 'chi' ? `CHI ${option.tiles.map(tileShort).join(' · ')}` : option.kind === 'pon' ? 'PON' : 'KAN';
-      choices.append(createButton(name, 'claim-action', () => playerClaim(index)));
+      const kindCls = option.kind === 'ron' ? 'btn-ron' : option.kind === 'chi' ? 'btn-chi' : 'btn-pon';
+      choices.append(createButton(name, `claim-action ${kindCls}`, () => playerClaim(index)));
     });
-    choices.append(createButton('Pass', 'claim-action pass', passClaim));
+    choices.append(createButton('Pass', 'claim-action pass btn-pass', passClaim));
   }
 
   function render() {

@@ -13,7 +13,17 @@ const headBeforeCss = index.slice(0, index.indexOf('<link rel="stylesheet"'));
 const bodyIndex = index.search(/<body[^>]*>/i);
 const bodyContent = bodyIndex !== -1 ? index.slice(bodyIndex) : index.slice(index.indexOf('<body'));
 
-const bundle = `${headBeforeCss}<style>\n${css}\n</style>\n  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>\n  <script>\n${js}\n</script>\n</head>\n${bodyContent}`;
+let dealerBase64 = './assets/dealer.jpg';
+try {
+  const dealerBuffer = readFileSync(join(root, 'assets', 'dealer.jpg'));
+  dealerBase64 = `data:image/jpeg;base64,${dealerBuffer.toString('base64')}`;
+} catch (e) {
+  // If dealer.jpg is not found, fallback to relative path
+}
+
+const inlinedBodyContent = bodyContent.replaceAll('./assets/dealer.jpg', dealerBase64);
+
+const bundle = `${headBeforeCss}<style>\n${css}\n</style>\n  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>\n</head>\n${inlinedBodyContent.replace('</body>', `  <script>\n${js}\n</script>\n</body>`)}`;
 
 const target = join(root, 'Mahjong-Riichi-4-Pemain.html');
 
