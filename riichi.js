@@ -1957,6 +1957,10 @@
   }
 
   function showMenuView() {
+    if (document.body) {
+      document.body.classList.remove('in-game-view');
+      document.body.classList.add('in-menu-view');
+    }
     const menuView = $('menuView');
     const gameView = $('gameView');
     const backBtn = $('backToMenuBtn');
@@ -1988,6 +1992,10 @@
   }
 
   function showGameView(mode = 'solo') {
+    if (document.body) {
+      document.body.classList.remove('in-menu-view');
+      document.body.classList.add('in-game-view');
+    }
     const menuView = $('menuView');
     const gameView = $('gameView');
     const backBtn = $('backToMenuBtn');

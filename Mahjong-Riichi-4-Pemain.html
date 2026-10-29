@@ -14,6 +14,7 @@
   --line: rgba(225, 201, 155, .24);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0; min-height: 100vh; color: var(--cream);
@@ -77,11 +78,11 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .reconnect-desc { font-size: 12px; color: #ded1b2; flex: 1; }
 .reconnect-desc strong { color: #f5d485; }
 
-.menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin: 24px 0 32px; }
+.menu-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 24px 0 32px; }
 .menu-card {
   position: relative; background: radial-gradient(ellipse at top left,#184437,#0b2820 85%);
   border: 1px solid rgba(225,201,155,.25); border-radius: 14px;
-  padding: 24px 22px; display: flex; flex-direction: column; text-align: left;
+  padding: 24px 20px; display: flex; flex-direction: column; text-align: left;
   box-shadow: 0 10px 28px rgba(0,0,0,.3);
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
@@ -100,14 +101,17 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .menu-footer { padding: 24px 0 10px; color: #8fae9b; font-size: 10px; text-align: center; }
 
 /* ZERO-SCROLL 100VH GAME VIEW LAYOUT */
+body.in-game-view,
 body:has(#gameView:not([hidden])) {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
 }
+body.in-game-view .topbar,
 body:has(#gameView:not([hidden])) .topbar {
   display: none !important;
 }
+body.in-game-view .app,
 body:has(#gameView:not([hidden])) .app {
   height: 100vh;
   height: 100dvh;
@@ -117,6 +121,11 @@ body:has(#gameView:not([hidden])) .app {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.menu-view[hidden],
+.game-view[hidden] {
+  display: none !important;
 }
 
 .game-view {
@@ -608,6 +617,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
 /* RESPONSIVE DESIGN: TABLET & MOBILE (ZERO SCROLL) */
 @media(max-width: 1024px) {
   .app { padding: 0 16px; }
+  .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .game-view.show-sidebar .game-layout { grid-template-columns: 1fr; }
   .game-view.show-sidebar #gameSidebar { display: none; }
   .top-caption { display: none; }
@@ -618,7 +628,22 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
 }
 
 @media(max-width: 768px) {
+  body.in-game-view .app,
   body:has(#gameView:not([hidden])) .app { padding: 2px 6px 4px; }
+  .menu-grid { grid-template-columns: 1fr; gap: 12px; }
+  .player-profile-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .player-server-meta {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(225, 201, 155, 0.15);
+  }
   .topbar { height: 58px; }
   .brand-icon { width: 32px; height: 36px; font-size: 20px; }
   .brand-word strong { font-size: 13px; }
@@ -2681,6 +2706,10 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
   }
 
   function showMenuView() {
+    if (document.body) {
+      document.body.classList.remove('in-game-view');
+      document.body.classList.add('in-menu-view');
+    }
     const menuView = $('menuView');
     const gameView = $('gameView');
     const backBtn = $('backToMenuBtn');
@@ -2712,6 +2741,10 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
   }
 
   function showGameView(mode = 'solo') {
+    if (document.body) {
+      document.body.classList.remove('in-menu-view');
+      document.body.classList.add('in-game-view');
+    }
     const menuView = $('menuView');
     const gameView = $('gameView');
     const backBtn = $('backToMenuBtn');
@@ -2893,7 +2926,7 @@ footer { padding: 28px 0; color: #8fae9b; font-size: 10px; text-align: center; }
 
 </script>
 </head>
-<body>
+<body class="in-menu-view">
   <div class="ambient-one" aria-hidden="true"></div>
   <div class="app">
     <header class="topbar">

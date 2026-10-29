@@ -10,7 +10,8 @@ const css = readFileSync(join(root, 'riichi.css'), 'utf8');
 const js = readFileSync(join(root, 'riichi.js'), 'utf8');
 
 const headBeforeCss = index.slice(0, index.indexOf('<link rel="stylesheet"'));
-const bodyContent = index.slice(index.indexOf('<body>'));
+const bodyIndex = index.search(/<body[^>]*>/i);
+const bodyContent = bodyIndex !== -1 ? index.slice(bodyIndex) : index.slice(index.indexOf('<body'));
 
 const bundle = `${headBeforeCss}<style>\n${css}\n</style>\n  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>\n  <script>\n${js}\n</script>\n</head>\n${bodyContent}`;
 
